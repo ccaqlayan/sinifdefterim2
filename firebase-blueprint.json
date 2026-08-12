@@ -1,0 +1,174 @@
+{
+  "entities": {
+    "ClassRoom": {
+      "title": "ClassRoom",
+      "description": "Classes managed by teachers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "grade": { "type": "string" },
+        "subject": { "type": "string" },
+        "term": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "subject"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student roster in classes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "classId": { "type": "string" },
+        "number": { "type": "string" },
+        "name": { "type": "string" },
+        "surname": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "parentName": { "type": "string" },
+        "parentPhone": { "type": "string" },
+        "parentEmail": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "classId", "name"]
+    },
+    "PerformanceLog": {
+      "title": "PerformanceLog",
+      "description": "Classroom participation logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "date": { "type": "string" },
+        "type": { "type": "string" },
+        "category": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "required": ["id", "studentId", "classId", "type"]
+    },
+    "QuizScore": {
+      "title": "QuizScore",
+      "description": "Quiz and exam scores",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "quizTitle": { "type": "string" },
+        "score": { "type": "number" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "studentId", "score"]
+    },
+    "Homework": {
+      "title": "Homework",
+      "description": "Assigned homeworks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "classId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "assignedDate": { "type": "string" }
+      },
+      "required": ["id", "classId", "title"]
+    },
+    "HomeworkRecord": {
+      "title": "HomeworkRecord",
+      "description": "Individual student homework completion records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "homeworkId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "status": { "type": "string" },
+        "note": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "homeworkId", "studentId", "status"]
+    },
+    "NotebookControl": {
+      "title": "NotebookControl",
+      "description": "Notebook checking percentage records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "classId": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string" },
+        "percentage": { "type": "number" },
+        "note": { "type": "string" }
+      },
+      "required": ["id", "studentId", "percentage"]
+    },
+    "WeightSettings": {
+      "title": "WeightSettings",
+      "description": "Weights for term evaluation",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string" },
+        "quizWeight": { "type": "number" },
+        "plusMinusWeight": { "type": "number" },
+        "homeworkWeight": { "type": "number" },
+        "notebookWeight": { "type": "number" }
+      },
+      "required": ["classId"]
+    },
+    "ParentFeedbackLog": {
+      "title": "ParentFeedbackLog",
+      "description": "Parent communication history",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "parentPhone": { "type": "string" },
+        "message": { "type": "string" },
+        "channel": { "type": "string" },
+        "sentAt": { "type": "string" },
+        "sentBy": { "type": "string" }
+      },
+      "required": ["id", "studentId", "message"]
+    }
+  },
+  "firestore": {
+    "classes": {
+      "schema": "ClassRoom",
+      "description": "Collection of classrooms"
+    },
+    "students": {
+      "schema": "Student",
+      "description": "Collection of students"
+    },
+    "plusMinusLogs": {
+      "schema": "PerformanceLog",
+      "description": "Collection of participation plus/minus logs"
+    },
+    "quizzes": {
+      "schema": "QuizScore",
+      "description": "Collection of quiz scores"
+    },
+    "homeworks": {
+      "schema": "Homework",
+      "description": "Collection of homework assignments"
+    },
+    "homeworkRecords": {
+      "schema": "HomeworkRecord",
+      "description": "Collection of student homework records"
+    },
+    "notebookControls": {
+      "schema": "NotebookControl",
+      "description": "Collection of notebook controls"
+    },
+    "weightSettings": {
+      "schema": "WeightSettings",
+      "description": "Collection of class weight settings"
+    },
+    "feedbackLogs": {
+      "schema": "ParentFeedbackLog",
+      "description": "Collection of feedback sent to parents"
+    }
+  }
+}
