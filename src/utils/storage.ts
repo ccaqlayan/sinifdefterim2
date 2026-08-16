@@ -20,6 +20,15 @@ export const DEFAULT_LUCKY_DRAW_SETTINGS: LuckyDrawSettings = {
   showStudentNumber: true,
 };
 
+export const GUEST_USER: User = {
+  id: '',
+  name: '',
+  email: '',
+  role: 'teacher',
+  authMethod: 'email',
+  isLoggedIn: false,
+};
+
 export const DEMO_USER: User = {
   id: 'usr-demo-teacher',
   name: 'Demo Öğretmen',
@@ -60,7 +69,7 @@ function setItem<T>(key: string, value: T): void {
 }
 
 export const Storage = {
-  getUser: (): User => getItem(GLOBAL_KEYS.CURRENT_USER, DEMO_USER),
+  getUser: (): User => getItem(GLOBAL_KEYS.CURRENT_USER, GUEST_USER),
   setUser: (user: User) => setItem(GLOBAL_KEYS.CURRENT_USER, user),
 
   getLuckyDrawSettings: (userId?: string): LuckyDrawSettings => 

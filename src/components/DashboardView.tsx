@@ -41,7 +41,6 @@ interface DashboardViewProps {
   onOpenBulkImport: () => void;
   onOpenLuckyDraw: () => void;
   onOpenAddClassModal?: () => void;
-  onQuickCreateSampleClass?: () => void;
   academicYearConfig?: AcademicYearConfig;
   onOpenAcademicSettings?: () => void;
 }
@@ -61,7 +60,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenBulkImport,
   onOpenLuckyDraw,
   onOpenAddClassModal,
-  onQuickCreateSampleClass,
   academicYearConfig,
   onOpenAcademicSettings,
 }) => {
@@ -110,7 +108,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
                 <Sparkles className="w-3 h-3" /> Başlangıç Rehberi
               </span>
-              <span className="text-xs text-indigo-200">Performans Portalı</span>
+              <span className="text-xs text-indigo-200">Sınıf Defterim</span>
             </div>
 
             <div>
@@ -139,15 +137,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <Users className="w-4 h-4 text-indigo-300" /> Sınıf & Öğrenci Yönetimi
               </button>
-
-              {onQuickCreateSampleClass && (
-                <button
-                  onClick={onQuickCreateSampleClass}
-                  className="px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 font-bold rounded-xl border border-emerald-400/30 text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-300" /> Örnek Sınıf Oluştur (5-A)
-                </button>
-              )}
             </div>
           </div>
         </div>

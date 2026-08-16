@@ -1,4 +1,4 @@
-export type UserRole = 'teacher' | 'parent';
+export type UserRole = 'teacher' | 'admin';
 export type AuthMethod = 'email' | 'google';
 
 export type ActiveTermSelection = 'term1' | 'term2' | 'all';

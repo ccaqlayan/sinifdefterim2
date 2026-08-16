@@ -2,6 +2,7 @@ import React from 'react';
 import { ClassRoom, User, AcademicYearConfig } from '../types';
 import { BookOpen, UserCircle, Sparkles, Calendar } from 'lucide-react';
 import { getTermLabel } from '../utils/termUtils';
+import { AppLogoIcon } from './common/AppLogo';
 
 interface HeaderProps {
   user: User;
@@ -9,7 +10,6 @@ interface HeaderProps {
   selectedClassId: string;
   onSelectClass: (classId: string) => void;
   onOpenAuth: () => void;
-  onResetData: () => void;
   activeTab: string;
   onSelectTab: (tab: string) => void;
   onOpenAddClass?: () => void;
@@ -23,7 +23,6 @@ export const Header: React.FC<HeaderProps> = ({
   selectedClassId,
   onSelectClass,
   onOpenAuth,
-  onResetData,
   activeTab,
   onSelectTab,
   onOpenAddClass,
@@ -53,16 +52,14 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs px-3 sm:px-4 py-2.5">
       <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
         {/* Logo & Brand Title */}
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center font-black text-lg shadow-sm shrink-0">
-            P
-          </div>
+        <div className="flex items-center gap-2.5">
+          <AppLogoIcon className="w-9 h-9 drop-shadow-2xs" />
           <div className="leading-tight">
-            <h1 className="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-1.5">
-              Performans Portalı
+            <h1 className="text-sm font-black text-indigo-950 tracking-tight flex items-center gap-1.5">
+              Sınıf Defterim
             </h1>
-            <p className="text-[11px] text-slate-500 font-medium truncate">
-              {user.role === 'teacher' ? `👨‍🏫 ${user.name}` : `👨‍👩‍👧 Veli Paneli (${user.name})`}
+            <p className="text-[10px] text-indigo-700 font-extrabold uppercase tracking-wide truncate">
+              Yıldız Anadolu Lisesi
             </p>
           </div>
         </div>
@@ -70,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Right Side Actions & Class / Term Selector */}
         <div className="flex items-center gap-2">
           {/* Academic Term Quick Indicator & Settings Launcher */}
-          {user.role === 'teacher' && academicYearConfig && onOpenAcademicSettings && (
+          {(user.role === 'teacher' || user.role === 'admin') && academicYearConfig && onOpenAcademicSettings && (
             <button
               onClick={onOpenAcademicSettings}
               className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 border border-amber-200/90 text-amber-950 text-xs font-black transition-all shadow-2xs cursor-pointer shrink-0"
@@ -84,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {user.role === 'teacher' && (
+          {(user.role === 'teacher' || user.role === 'admin') && (
             classes.length > 0 ? (
               <div className="relative">
                 <select
@@ -135,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {user.name}
               </div>
               <div className="text-[10px] text-slate-500 font-medium leading-none flex items-center gap-1">
-                <span>{user.role === 'teacher' ? '👨‍🏫 Öğretmen' : '👨‍👩‍👧 Veli'}</span>
+                <span>{user.role === 'admin' ? '🛡️ Admin' : '👨‍🏫 Öğretmen'}</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
               </div>
             </div>

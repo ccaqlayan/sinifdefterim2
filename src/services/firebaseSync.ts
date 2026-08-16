@@ -15,6 +15,7 @@ import {
 } from '../mockData';
 import { DEFAULT_SCHEDULE_CONFIG, INITIAL_SCHEDULE_LESSONS } from '../utils/scheduleUtils';
 import { DEFAULT_ACADEMIC_YEAR_CONFIG } from '../utils/termUtils';
+import { Storage } from '../utils/storage';
 
 enum OperationType {
   CREATE = 'create',
@@ -76,7 +77,10 @@ function sanitizeForFirestore<T>(data: T): T {
 }
 
 function getSafeUserId(userId?: string): string {
-  return (userId || 'usr-demo-teacher').replace(/[^a-zA-Z0-9_-]/g, '_');
+  if (!userId || userId.trim() === '') {
+    return 'usr_guest_unauthenticated';
+  }
+  return userId.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
 // User-scoped Collection Names
@@ -457,13 +461,170 @@ export async function saveFeedbackLogToFirebase(userId: string, feedback: Parent
 }
 
 // User Profile Sync (Global userProfiles collection keyed by userId)
+export async function getUserProfileFromFirebaseOnce(userId: string): Promise<Partial<User> | null> {
+  const profileId = getSafeUserId(userId);
+  try {
+    const snap = await getDoc(doc(db, COLS.PROFILES, profileId));
+    if (snap.exists()) {
+      return snap.data() as Partial<User>;
+    }
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, `${COLS.PROFILES}/${profileId}`);
+  }
+  return null;
+}
+
+export async function getAllUserProfilesFromFirebase(): Promise<User[]> {
+  const usersMap = new Map<string, User>();
+  try {
+    const snap = await getDocs(collection(db, COLS.PROFILES));
+    snap.docs.forEach((d) => {
+      const data = d.data() as User;
+      if (data && data.email) {
+        const emailLower = data.email.toLowerCase();
+        // Force admin role for ccaqlayan@gmail.com, teacher for others
+        const role = emailLower === 'ccaqlayan@gmail.com' ? 'admin' : 'teacher';
+        usersMap.set(emailLower, { ...data, role });
+      }
+    });
+  } catch (err) {
+    console.warn('Error getting all user profiles from Firestore:', err);
+  }
+
+  // Also check email mappings if any profile was missed
+  try {
+    const mappingsSnap = await getDocs(collection(db, 'emailMappings'));
+    for (const d of mappingsSnap.docs) {
+      const mapData = d.data();
+      if (mapData && mapData.email && !usersMap.has(mapData.email.toLowerCase())) {
+        const emailLower = mapData.email.toLowerCase();
+        const role = emailLower === 'ccaqlayan@gmail.com' ? 'admin' : 'teacher';
+        usersMap.set(emailLower, {
+          id: mapData.canonicalUserId || d.id,
+          name: mapData.email.split('@')[0],
+          email: mapData.email,
+          role,
+          authMethod: mapData.primaryMethod || 'email',
+          isLoggedIn: true,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Error reading emailMappings:', err);
+  }
+
+  // Ensure current logged-in user is present
+  const currentUser = Storage.getUser();
+  if (currentUser && currentUser.email) {
+    const emailLower = currentUser.email.toLowerCase();
+    const role = emailLower === 'ccaqlayan@gmail.com' ? 'admin' : 'teacher';
+    const existing = usersMap.get(emailLower);
+    usersMap.set(emailLower, {
+      ...(existing || {}),
+      ...currentUser,
+      role,
+    });
+  }
+
+  return Array.from(usersMap.values());
+}
+
+export async function getTeacherDataForAdmin(teacherUserId: string, teacherEmail?: string): Promise<{ classes: ClassRoom[]; students: Student[] }> {
+  const candidateIds = new Set<string>();
+  if (teacherUserId) candidateIds.add(teacherUserId);
+  if (teacherEmail) {
+    const emailLower = teacherEmail.toLowerCase();
+    const sanitizedEmailKey = emailLower.replace(/[^a-zA-Z0-9]/g, '_');
+    candidateIds.add('usr-account-' + sanitizedEmailKey);
+    candidateIds.add('usr-google-' + sanitizedEmailKey);
+  }
+  const currentUser = Storage.getUser();
+  if (currentUser && currentUser.email && teacherEmail && currentUser.email.toLowerCase() === teacherEmail.toLowerCase()) {
+    if (currentUser.id) candidateIds.add(currentUser.id);
+  }
+
+  const classesMap = new Map<string, ClassRoom>();
+  const studentsMap = new Map<string, Student>();
+
+  for (const uid of Array.from(candidateIds)) {
+    if (!uid) continue;
+    const safeUid = getSafeUserId(uid);
+
+    // 1. Try Firestore for candidate ID
+    try {
+      const classSnap = await getDocs(collection(db, 'users', safeUid, COLS.CLASSES));
+      classSnap.docs.forEach((d) => {
+        const cls = d.data() as ClassRoom;
+        if (cls && cls.id) classesMap.set(cls.id, cls);
+      });
+
+      const studentSnap = await getDocs(collection(db, 'users', safeUid, COLS.STUDENTS));
+      studentSnap.docs.forEach((d) => {
+        const s = d.data() as Student;
+        if (s && s.id) studentsMap.set(s.id, s);
+      });
+    } catch (err) {
+      console.warn('Firestore fetch teacher data error for uid:', safeUid, err);
+    }
+
+    // 2. Check LocalStorage for candidate ID
+    const localClasses = Storage.getClasses(uid);
+    if (localClasses && localClasses.length > 0) {
+      localClasses.forEach((cls) => {
+        if (cls && cls.id && !classesMap.has(cls.id)) {
+          classesMap.set(cls.id, cls);
+        }
+      });
+    }
+
+    const localStudents = Storage.getStudents(uid);
+    if (localStudents && localStudents.length > 0) {
+      localStudents.forEach((s) => {
+        if (s && s.id && !studentsMap.has(s.id)) {
+          studentsMap.set(s.id, s);
+        }
+      });
+    }
+  }
+
+  // Fallback: If teacher matches current logged-in user and maps are still empty, read from default LocalStorage
+  if (currentUser && currentUser.email && teacherEmail && currentUser.email.toLowerCase() === teacherEmail.toLowerCase()) {
+    if (classesMap.size === 0) {
+      const currentClasses = Storage.getClasses(currentUser.id);
+      currentClasses.forEach((cls) => {
+        if (cls && cls.id) classesMap.set(cls.id, cls);
+      });
+    }
+    if (studentsMap.size === 0) {
+      const currentStudents = Storage.getStudents(currentUser.id);
+      currentStudents.forEach((s) => {
+        if (s && s.id) studentsMap.set(s.id, s);
+      });
+    }
+  }
+
+  return { 
+    classes: Array.from(classesMap.values()), 
+    students: Array.from(studentsMap.values()) 
+  };
+}
+
 export function subscribeUserProfile(userId: string, callback: (profile: Partial<User>) => void) {
+  if (!userId || userId === 'usr_guest_unauthenticated') {
+    return () => {};
+  }
   const profileId = getSafeUserId(userId);
   return onSnapshot(
     doc(db, COLS.PROFILES, profileId),
     (snapshot) => {
       if (snapshot.exists()) {
-        callback(snapshot.data() as Partial<User>);
+        const data = snapshot.data() as Partial<User>;
+        if (data && data.email && data.email.toLowerCase() !== 'demo.ogretmen@okul.k12.tr') {
+          if (data.subject === 'Matematik & Fen Bilimleri') data.subject = '';
+          if (data.schoolName === 'Atatürk Ortaokulu') data.schoolName = '';
+          if (data.name === 'Demo Öğretmen') data.name = '';
+        }
+        callback(data);
       }
     },
     (err) => handleFirestoreError(err, OperationType.GET, `${COLS.PROFILES}/${profileId}`)
@@ -471,14 +632,51 @@ export function subscribeUserProfile(userId: string, callback: (profile: Partial
 }
 
 export async function saveUserProfileToFirebase(user: User) {
+  if (!user || !user.id || user.id === 'usr_guest_unauthenticated') return;
   try {
     const profileId = getSafeUserId(user.id);
-    await setDoc(doc(db, COLS.PROFILES, profileId), sanitizeForFirestore({
+    const sanitizedData = sanitizeForFirestore({
       ...user,
       updatedAt: new Date().toISOString(),
-    }), { merge: true });
+    });
+
+    await setDoc(doc(db, COLS.PROFILES, profileId), sanitizedData, { merge: true });
+
+    // Sync across user aliases for same email
+    if (user.email) {
+      const emailLower = user.email.toLowerCase();
+      const sanitizedEmailKey = emailLower.replace(/[^a-zA-Z0-9]/g, '_');
+      const alias1 = 'usr-account-' + sanitizedEmailKey;
+      const alias2 = 'usr-google-' + sanitizedEmailKey;
+
+      if (alias1 !== profileId) {
+        await setDoc(doc(db, COLS.PROFILES, alias1), sanitizedData, { merge: true }).catch(() => {});
+      }
+      if (alias2 !== profileId) {
+        await setDoc(doc(db, COLS.PROFILES, alias2), sanitizedData, { merge: true }).catch(() => {});
+      }
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `${COLS.PROFILES}/${user.id}`);
+  }
+}
+
+export async function deleteUserProfileFromFirebase(teacherUserId: string, email?: string) {
+  try {
+    const profileId = getSafeUserId(teacherUserId);
+    await deleteDoc(doc(db, COLS.PROFILES, profileId)).catch(() => {});
+
+    if (email) {
+      const emailLower = email.toLowerCase();
+      const sanitizedEmailKey = emailLower.replace(/[^a-zA-Z0-9]/g, '_');
+      const alias1 = 'usr-account-' + sanitizedEmailKey;
+      const alias2 = 'usr-google-' + sanitizedEmailKey;
+      await deleteDoc(doc(db, COLS.PROFILES, alias1)).catch(() => {});
+      await deleteDoc(doc(db, COLS.PROFILES, alias2)).catch(() => {});
+      await deleteDoc(doc(db, 'emailMappings', sanitizedEmailKey)).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('Error deleting user profile from Firebase:', err);
   }
 }
 

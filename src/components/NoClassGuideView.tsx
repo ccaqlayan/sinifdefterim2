@@ -21,7 +21,6 @@ interface NoClassGuideViewProps {
   onNavigateManagement: () => void;
   onOpenBulkImport?: () => void;
   onOpenPdfImport?: () => void;
-  onQuickCreateSampleClass?: () => void;
 }
 
 export const NoClassGuideView: React.FC<NoClassGuideViewProps> = ({
@@ -31,7 +30,6 @@ export const NoClassGuideView: React.FC<NoClassGuideViewProps> = ({
   onNavigateManagement,
   onOpenBulkImport,
   onOpenPdfImport,
-  onQuickCreateSampleClass,
 }) => {
   // Contextual info based on the active tab
   const getTabContext = () => {
@@ -136,7 +134,7 @@ export const NoClassGuideView: React.FC<NoClassGuideViewProps> = ({
           </div>
 
           {/* Import Alternatives */}
-          {(onOpenBulkImport || onOpenPdfImport || onQuickCreateSampleClass) && (
+          {(onOpenBulkImport || onOpenPdfImport) && (
             <div className="w-full max-w-sm mt-5 pt-4 border-t border-slate-100">
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 text-center">
                 Veya Hızlı Başlangıç Seçenekleri
@@ -160,16 +158,6 @@ export const NoClassGuideView: React.FC<NoClassGuideViewProps> = ({
                   >
                     <Upload className="w-4 h-4 text-purple-600 shrink-0" />
                     <span className="truncate">e-Okul PDF / Liste Yükle</span>
-                  </button>
-                )}
-
-                {onQuickCreateSampleClass && (
-                  <button
-                    onClick={onQuickCreateSampleClass}
-                    className="p-2.5 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-950 rounded-xl border border-indigo-200 text-left transition-all cursor-pointer flex items-center gap-2 text-xs font-bold sm:col-span-2 justify-center"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>Örnek Başlangıç Sınıfı Ekle (5-A Matematik)</span>
                   </button>
                 )}
               </div>

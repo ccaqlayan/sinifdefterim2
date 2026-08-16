@@ -50,6 +50,7 @@ interface ProfileModalProps {
   onUpdateLuckyDrawSettings: (newSettings: LuckyDrawSettings) => void;
   isCloudConnected?: boolean;
   onOpenSchedule?: () => void;
+  onOpenTeacherManagement?: () => void;
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -61,6 +62,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onUpdateLuckyDrawSettings,
   isCloudConnected = true,
   onOpenSchedule,
+  onOpenTeacherManagement,
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'luckydraw' | 'auth'>('profile');
 
@@ -216,7 +218,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       name: name.trim() || 'Öğretmen',
       email: email.trim() || 'ogretmen@okul.k12.tr',
       role,
-      subject: role === 'teacher' ? subject.trim() : undefined,
+      subject: subject.trim(),
       schoolName: schoolName.trim(),
       photoUrl: photoUrl.trim() || undefined,
       isLoggedIn: true,
@@ -446,7 +448,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   {name || 'Öğretmen'}
                 </h2>
                 <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/40 text-indigo-200 border border-indigo-400/30">
-                  {role === 'teacher' ? '👨‍🏫 Öğretmen' : '👨‍👩‍👧 Veli'}
+                  {currentUser.role === 'admin' ? '🛡️ Sistem Yöneticisi' : '👨‍🏫 Öğretmen'}
                 </span>
               </div>
               <p className="text-xs text-indigo-200 truncate flex items-center gap-1.5">
@@ -695,38 +697,39 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                 </div>
 
-                {/* Rol Seçimi */}
-                <div className="sm:col-span-2">
-                  <label className="block font-bold text-slate-700 mb-1.5">Sistem Rolü</label>
-                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => setRole('teacher')}
-                      className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        role === 'teacher'
-                          ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      👨‍🏫 Öğretmen Modu
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRole('parent')}
-                      className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        role === 'parent'
-                          ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      👨‍👩‍👧 Veli Paneli
-                    </button>
-                  </div>
-                </div>
+
               </div>
 
-              {/* Cloud Sync Info & Schedule Quick Link */}
+              {/* Cloud Sync Info & Schedule & Admin Quick Link */}
               <div className="space-y-2">
+                {/* Admin Teacher Management Special Tile */}
+                {(currentUser.role === 'admin' || currentUser.email?.toLowerCase() === 'ccaqlayan@gmail.com') && onOpenTeacherManagement && (
+                  <div className="p-3.5 bg-gradient-to-r from-amber-50 to-amber-100/90 border border-amber-300 rounded-2xl flex items-center justify-between gap-3 text-amber-950 shadow-2xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-xs">
+                        <Shield className="w-5 h-5 text-indigo-950" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-extrabold text-xs text-amber-950">Öğretmen Yönetim Sayfası</h4>
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-amber-300 text-amber-950 rounded">Admin Özel</span>
+                        </div>
+                        <p className="text-[11px] text-amber-900/90 font-medium">Sistemdeki öğretmen hesaplarını, sınıfları ve öğrenci verilerini inceleyin</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenTeacherManagement();
+                      }}
+                      className="px-3.5 py-2 bg-indigo-950 hover:bg-indigo-900 text-amber-300 font-extrabold rounded-xl text-xs shadow-xs transition-all cursor-pointer shrink-0 border border-amber-400/40"
+                    >
+                      Öğretmenleri Yönet
+                    </button>
+                  </div>
+                )}
+
                 {onOpenSchedule && (
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between gap-3 text-blue-900">
                     <div className="flex items-center gap-2.5">

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { User, UserRole, LuckyDrawSettings } from '../../types';
 import { DEFAULT_LUCKY_DRAW_SETTINGS } from '../../utils/storage';
 import { signInWithGoogle, auth } from '../../lib/firebase';
+import { resolveCanonicalUser } from '../../services/accountResolver';
+import { AppLogo } from '../common/AppLogo';
 import { 
   LogIn, 
   UserPlus, 
@@ -25,12 +27,11 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [selectedRole, setSelectedRole] = useState<UserRole>('teacher');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [subject, setSubject] = useState('Matematik & Fen Bilimleri');
-  const [schoolName, setSchoolName] = useState('Atatürk Ortaokulu');
+  const [subject, setSubject] = useState('');
+  const [schoolName, setSchoolName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -62,45 +63,40 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       setErrorMessage(null);
       const firebaseUser = await signInWithGoogle();
       if (firebaseUser) {
-        const loggedUser: User = {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || (selectedRole === 'teacher' ? 'Öğretmen' : 'Veli'),
-          email: firebaseUser.email || 'kullanici@gmail.com',
-          role: selectedRole,
-          authMethod: 'google',
-          subject: selectedRole === 'teacher' ? subject : undefined,
-          schoolName: selectedRole === 'teacher' ? schoolName : undefined,
+        const resolvedUser = await resolveCanonicalUser({
+          loginMethod: 'google',
+          providedEmail: firebaseUser.email || 'kullanici@gmail.com',
+          providedUserId: firebaseUser.uid,
+          name: firebaseUser.displayName || 'Öğretmen',
+          subject: subject,
+          schoolName: schoolName,
           photoUrl: firebaseUser.photoURL || undefined,
-          childStudentId: selectedRole === 'parent' ? 'std-101' : undefined,
-          isLoggedIn: true,
-          luckyDrawSettings: DEFAULT_LUCKY_DRAW_SETTINGS,
-        };
-        onLogin(loggedUser);
+        });
+        onLogin(resolvedUser);
       }
     } catch (err: any) {
       console.warn('Google sign-in popup notice:', err);
       // Fallback for sandboxed preview iframe if popup is blocked
-      const userKey = email.trim() ? email.trim().replace(/[^a-zA-Z0-9]/g, '_') : String(Date.now());
-      const fallbackUser: User = {
-        id: 'usr-google-' + userKey,
-        name: selectedRole === 'teacher' ? (name.trim() || 'Öğretmen (Google)') : (name.trim() || 'Veli (Google)'),
-        email: email || 'ogretmen@gmail.com',
-        role: selectedRole,
-        authMethod: 'google',
-        subject: selectedRole === 'teacher' ? subject : undefined,
-        schoolName: selectedRole === 'teacher' ? schoolName : undefined,
-        childStudentId: selectedRole === 'parent' ? 'std-101' : undefined,
-        isLoggedIn: true,
-        luckyDrawSettings: DEFAULT_LUCKY_DRAW_SETTINGS,
-      };
-      onLogin(fallbackUser);
+      const userEmail = email.trim() || 'ogretmen@gmail.com';
+      const userKey = userEmail.replace(/[^a-zA-Z0-9]/g, '_');
+      const fallbackUserId = 'usr-google-' + userKey;
+      
+      const resolvedUser = await resolveCanonicalUser({
+        loginMethod: 'google',
+        providedEmail: userEmail,
+        providedUserId: fallbackUserId,
+        name: name.trim() || 'Öğretmen (Google)',
+        subject: subject,
+        schoolName: schoolName,
+      });
+      onLogin(resolvedUser);
     } finally {
       setIsLoading(false);
     }
   };
 
   // Form Submit Handler
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -115,30 +111,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
 
     setIsLoading(true);
-    // Consistent deterministic user ID based on email to ensure persistence across sessions
     const sanitizedEmailKey = trimmedEmail.toLowerCase().replace(/[^a-zA-Z0-9]/g, '_');
-    const userId = 'usr-account-' + sanitizedEmailKey;
-    const displayName = name.trim() || (selectedRole === 'teacher' ? 'Öğretmen' : 'Öğrenci Velisi');
+    const defaultUserId = 'usr-account-' + sanitizedEmailKey;
+    const displayName = name.trim() || 'Öğretmen';
 
-    const newUser: User = {
-      id: userId,
-      name: displayName,
-      email: trimmedEmail,
-      password: password ? password : undefined,
-      hasCustomPassword: Boolean(password && password.length > 0),
-      role: selectedRole,
-      authMethod: 'email',
-      subject: selectedRole === 'teacher' ? subject.trim() : undefined,
-      schoolName: selectedRole === 'teacher' ? schoolName.trim() : undefined,
-      childStudentId: selectedRole === 'parent' ? 'std-101' : undefined,
-      isLoggedIn: true,
-      luckyDrawSettings: DEFAULT_LUCKY_DRAW_SETTINGS,
-    };
+    try {
+      const resolvedUser = await resolveCanonicalUser({
+        loginMethod: 'email',
+        providedEmail: trimmedEmail,
+        providedUserId: defaultUserId,
+        name: displayName,
+        password: password ? password : undefined,
+        subject: subject.trim(),
+        schoolName: schoolName.trim(),
+      });
 
-    setTimeout(() => {
-      onLogin(newUser);
+      onLogin(resolvedUser);
+    } catch (err: any) {
+      console.error('Login resolve error:', err);
+      setErrorMessage(err?.message || 'Giriş yapılırken bir hata oluştu.');
+    } finally {
       setIsLoading(false);
-    }, 250);
+    }
   };
 
   return (
@@ -151,53 +145,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden relative z-10 animate-in fade-in zoom-in-95 duration-300">
         
         {/* Top Accent Header Banner */}
-        <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-blue-700 text-white p-6 text-center relative">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg mb-3">
-            <GraduationCap className="w-8 h-8 text-amber-300" />
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            Sınıf & Performans Portalı
-          </h1>
-          <p className="text-xs text-indigo-100 font-medium mt-1">
-            Devam etmek için lütfen hesabınıza giriş yapın
+        <div className="bg-gradient-to-b from-slate-900 via-indigo-950 to-indigo-900 text-white p-6 text-center relative border-b border-indigo-800/50">
+          <AppLogo variant="light" showTagline={true} />
+          <p className="text-xs text-indigo-200/90 font-medium mt-3 pt-2 border-t border-indigo-800/40">
+            Devam etmek için lütfen öğretmen hesabınıza giriş yapın
           </p>
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Role Selection Toggle */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
-              Giriş Türü Seçin
-            </label>
-            <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => setSelectedRole('teacher')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  selectedRole === 'teacher'
-                    ? 'bg-white text-indigo-900 shadow-xs border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <School className="w-4 h-4 text-indigo-600" />
-                Öğretmen Girişi
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedRole('parent')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  selectedRole === 'parent'
-                    ? 'bg-white text-indigo-900 shadow-xs border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Users className="w-4 h-4 text-indigo-600" />
-                Veli Portalı
-              </button>
-            </div>
-          </div>
-
           {/* Login / Register Tab Switcher */}
           <div className="flex border-b border-slate-200 text-xs font-bold">
             <button
@@ -245,7 +200,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            Google ile Tek Tıkla Giriş Yap
+            {authMode === 'login' ? 'Google ile Tek Tıkla Giriş Yap' : 'Google ile Tek Tıkla Kayıt Ol'}
           </button>
 
           {/* Divider */}
@@ -271,7 +226,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder={selectedRole === 'teacher' ? 'Örn: Ahmet Yılmaz' : 'Örn: Fatma Demir'}
+                    placeholder="Örn: Ahmet Yılmaz"
                     required
                     className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                   />
@@ -289,7 +244,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={selectedRole === 'teacher' ? 'ogretmen@okul.k12.tr' : 'veli@gmail.com'}
+                  placeholder="ogretmen@okul.k12.tr"
                   required
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                 />
@@ -313,7 +268,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </div>
             </div>
 
-            {selectedRole === 'teacher' && authMode === 'register' && (
+            {authMode === 'register' && (
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">

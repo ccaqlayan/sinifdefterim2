@@ -34,6 +34,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { NoClassGuideView } from './components/NoClassGuideView';
 
 import { ProfileModal } from './components/ProfileModal';
+import { TeacherManagementModal } from './components/TeacherManagementModal';
 import { StudentModal } from './components/StudentModal';
 import { BulkImportModal } from './components/BulkImportModal';
 import { PdfImportModal } from './components/PdfImportModal';
@@ -131,6 +132,7 @@ export default function App() {
   const [isClassModalOpen, setIsClassModalOpen] = useState<boolean>(false);
   const [isLuckyDrawOpen, setIsLuckyDrawOpen] = useState<boolean>(false);
   const [isAcademicSettingsOpen, setIsAcademicSettingsOpen] = useState<boolean>(false);
+  const [isTeacherManagementOpen, setIsTeacherManagementOpen] = useState<boolean>(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   const currentClass = classes.find((c) => c.id === selectedClassId) || classes[0];
@@ -265,9 +267,6 @@ export default function App() {
       setLuckyDrawSettings(updatedUser.luckyDrawSettings);
       Storage.setLuckyDrawSettings(updatedUser.id, updatedUser.luckyDrawSettings);
       saveLuckyDrawSettingsToFirebase(updatedUser.luckyDrawSettings, updatedUser.id);
-    }
-    if (updatedUser.role === 'parent') {
-      setActiveTab('parent-portal');
     }
   };
 
@@ -522,28 +521,6 @@ export default function App() {
     saveClassToFirebase(user.id, created);
   };
 
-  const handleQuickCreateSampleClass = () => {
-    const sampleClass: ClassRoom = {
-      id: 'class-' + Date.now(),
-      name: '5-A',
-      grade: '5',
-      subject: 'Matematik',
-      term: '2025-2026 2. Dönem',
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    setClasses((prev) => [...prev, sampleClass]);
-    setSelectedClassId(sampleClass.id);
-    saveClassToFirebase(user.id, sampleClass);
-
-    const sampleStudents: Student[] = [
-      { id: 'std-sample-1-' + Date.now(), classId: sampleClass.id, number: '101', name: 'Ahmet', surname: 'Yılmaz', parentName: 'Mehmet Yılmaz', parentPhone: '5551112233', parentEmail: 'veli.ahmet@example.com' },
-      { id: 'std-sample-2-' + Date.now(), classId: sampleClass.id, number: '102', name: 'Zeynep', surname: 'Kaya', parentName: 'Fatma Kaya', parentPhone: '5552223344', parentEmail: 'veli.zeynep@example.com' },
-      { id: 'std-sample-3-' + Date.now(), classId: sampleClass.id, number: '103', name: 'Emir', surname: 'Demir', parentName: 'Ali Demir', parentPhone: '5553334455', parentEmail: 'veli.emir@example.com' },
-    ];
-    setStudents((prev) => [...prev, ...sampleStudents]);
-    sampleStudents.forEach((st) => saveStudentToFirebase(user.id, st));
-  };
-
   const handleUpdateClass = (updatedClass: ClassRoom) => {
     setClasses((prev) => prev.map((c) => (c.id === updatedClass.id ? updatedClass : c)));
     saveClassToFirebase(user.id, updatedClass);
@@ -649,13 +626,6 @@ export default function App() {
     saveScheduleConfigToFirebase(user.id, newConfig);
   };
 
-  const handleResetData = () => {
-    if (window.confirm('Tüm veriler varsayılan simülasyon ayarlarına sıfırlansın mı?')) {
-      Storage.resetToDefaults();
-      window.location.reload();
-    }
-  };
-
   // Strictly enforce authentication gate: When logged out, only show LoginPage
   if (!user || user.isLoggedIn === false) {
     return <LoginPage onLogin={handleUpdateUser} />;
@@ -671,7 +641,6 @@ export default function App() {
           selectedClassId={selectedClassId}
           onSelectClass={setSelectedClassId}
           onOpenAuth={() => setIsAuthOpen(true)}
-          onResetData={handleResetData}
           activeTab={activeTab}
           onSelectTab={setActiveTab}
           onOpenAddClass={() => setIsClassModalOpen(true)}
@@ -713,7 +682,6 @@ export default function App() {
                   onOpenBulkImport={() => setIsBulkImportOpen(true)}
                   onOpenLuckyDraw={() => setIsLuckyDrawOpen(true)}
                   onOpenAddClassModal={() => setIsClassModalOpen(true)}
-                  onQuickCreateSampleClass={handleQuickCreateSampleClass}
                   academicYearConfig={academicYearConfig}
                   onOpenAcademicSettings={() => setIsAcademicSettingsOpen(true)}
                 />
@@ -742,7 +710,6 @@ export default function App() {
                     onNavigateManagement={() => setActiveTab('management')}
                     onOpenBulkImport={() => setIsBulkImportOpen(true)}
                     onOpenPdfImport={() => setIsPdfImportOpen(true)}
-                    onQuickCreateSampleClass={handleQuickCreateSampleClass}
                   />
                 )
               )}
@@ -768,7 +735,6 @@ export default function App() {
                     onNavigateManagement={() => setActiveTab('management')}
                     onOpenBulkImport={() => setIsBulkImportOpen(true)}
                     onOpenPdfImport={() => setIsPdfImportOpen(true)}
-                    onQuickCreateSampleClass={handleQuickCreateSampleClass}
                   />
                 )
               )}
@@ -807,7 +773,6 @@ export default function App() {
                     onNavigateManagement={() => setActiveTab('management')}
                     onOpenBulkImport={() => setIsBulkImportOpen(true)}
                     onOpenPdfImport={() => setIsPdfImportOpen(true)}
-                    onQuickCreateSampleClass={handleQuickCreateSampleClass}
                   />
                 )
               )}
@@ -854,7 +819,6 @@ export default function App() {
                     onNavigateManagement={() => setActiveTab('management')}
                     onOpenBulkImport={() => setIsBulkImportOpen(true)}
                     onOpenPdfImport={() => setIsPdfImportOpen(true)}
-                    onQuickCreateSampleClass={handleQuickCreateSampleClass}
                   />
                 )
               )}
@@ -925,6 +889,13 @@ export default function App() {
         onUpdateLuckyDrawSettings={handleUpdateLuckyDrawSettings}
         isCloudConnected={isCloudConnected}
         onOpenSchedule={() => setActiveTab('schedule')}
+        onOpenTeacherManagement={() => setIsTeacherManagementOpen(true)}
+      />
+
+      <TeacherManagementModal
+        isOpen={isTeacherManagementOpen}
+        onClose={() => setIsTeacherManagementOpen(false)}
+        currentUser={user}
       />
 
       <StudentModal
