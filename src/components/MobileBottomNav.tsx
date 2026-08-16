@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Zap, BookMarked, Award, MessageSquare, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Zap, BookMarked, Award, CheckSquare, Settings, ShieldCheck } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface MobileBottomNavProps {
@@ -31,9 +31,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onS
     { id: 'dashboard', label: 'Anasayfa', icon: LayoutDashboard },
     { id: 'quick-score', label: 'Pratik + / -', icon: Zap, badge: 'Sınıf' },
     { id: 'notebook', label: 'Defter', icon: BookMarked },
-    { id: 'quiz-hw', label: 'Quiz / Ödev', icon: Award },
-    { id: 'reports', label: 'Raporlar', icon: Award },
-    { id: 'feedback', label: 'Veli & Ayar', icon: MessageSquare },
+    { id: 'quiz', label: 'Quiz', icon: Award },
+    { id: 'homework', label: 'Ödev', icon: CheckSquare },
+    { id: 'feedback', label: 'Ayarlar', icon: Settings },
   ];
 
   return (
@@ -46,7 +46,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onS
             <button
               key={item.id}
               onClick={() => onSelectTab(item.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all relative ${
+              className={`flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all relative cursor-pointer ${
                 isActive
                   ? 'text-indigo-700 font-extrabold bg-indigo-50/90 scale-102'
                   : 'text-slate-500 hover:text-slate-900 font-medium'
@@ -60,7 +60,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onS
                   </span>
                 )}
               </div>
-              <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-[56px] text-center">
+              <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-[52px] text-center">
                 {item.label}
               </span>
             </button>

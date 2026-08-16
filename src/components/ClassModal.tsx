@@ -11,8 +11,8 @@ interface ClassModalProps {
 export const ClassModal: React.FC<ClassModalProps> = ({ isOpen, onClose, onAddClass }) => {
   const [name, setName] = useState('');
   const [grade, setGrade] = useState('9');
-  const [subject, setSubject] = useState('Matematik');
-  const [term, setTerm] = useState('2025-2026 2. Dönem');
+  const [subject, setSubject] = useState('');
+  const [term, setTerm] = useState('');
 
   if (!isOpen) return null;
 
@@ -23,9 +23,11 @@ export const ClassModal: React.FC<ClassModalProps> = ({ isOpen, onClose, onAddCl
       name: name.trim(),
       grade,
       subject: subject.trim(),
-      term,
+      term: term.trim(),
     });
     setName('');
+    setSubject('');
+    setTerm('');
     onClose();
   };
 
@@ -62,14 +64,12 @@ export const ClassModal: React.FC<ClassModalProps> = ({ isOpen, onClose, onAddCl
                 onChange={(e) => setGrade(e.target.value)}
                 className="w-full px-2.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
               >
-                <option value="5">5. Sınıf</option>
-                <option value="6">6. Sınıf</option>
-                <option value="7">7. Sınıf</option>
-                <option value="8">8. Sınıf (LGS)</option>
+                <option value="Hazırlık">Hazırlık Sınıfı</option>
                 <option value="9">9. Sınıf</option>
                 <option value="10">10. Sınıf</option>
                 <option value="11">11. Sınıf</option>
                 <option value="12">12. Sınıf (YKS)</option>
+                <option value="Mezun">Mezun (YKS)</option>
               </select>
             </div>
 
@@ -92,6 +92,7 @@ export const ClassModal: React.FC<ClassModalProps> = ({ isOpen, onClose, onAddCl
               type="text"
               value={term}
               onChange={(e) => setTerm(e.target.value)}
+              placeholder="Örn: 2025-2026 2. Dönem"
               className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium"
             />
           </div>

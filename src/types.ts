@@ -1,14 +1,43 @@
 export type UserRole = 'teacher' | 'parent';
 export type AuthMethod = 'email' | 'google';
 
+export type ActiveTermSelection = 'term1' | 'term2' | 'all';
+
+export interface AcademicTermDetails {
+  name: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+}
+
+export interface AcademicYearConfig {
+  academicYear: string; // e.g. "2025-2026"
+  activeTermId: ActiveTermSelection; // 'term1' | 'term2' | 'all'
+  term1: AcademicTermDetails;
+  term2: AcademicTermDetails;
+}
+
+export interface LuckyDrawSettings {
+  soundEnabled: boolean;
+  autoExcludeWinner: boolean;
+  spinDurationSeconds: number; // 3, 5, 8, 12
+  nameFormat: 'full' | 'short';
+  showStudentNumber: boolean;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
   authMethod: AuthMethod;
+  password?: string;
+  hasCustomPassword?: boolean;
   subject?: string;
+  schoolName?: string;
+  photoUrl?: string;
   childStudentId?: string; // For parent role
+  luckyDrawSettings?: LuckyDrawSettings;
+  isLoggedIn?: boolean;
 }
 
 export interface ClassRoom {
@@ -52,8 +81,20 @@ export interface PerformanceLog {
   note?: string;
 }
 
+export interface Quiz {
+  id: string;
+  classId: string;
+  title: string;
+  date: string;
+  description?: string;
+  maxScore?: number;
+  isDeleted?: boolean;
+  deletedAt?: string;
+}
+
 export interface QuizScore {
   id: string;
+  quizId?: string;
   studentId: string;
   classId: string;
   quizTitle: string; // e.g., "Quiz 1", "Yazılı Hazırlık"
@@ -68,9 +109,11 @@ export interface Homework {
   description: string;
   dueDate: string;
   assignedDate: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
 }
 
-export type HomeworkStatus = 'completed' | 'missing' | 'late' | 'excused';
+export type HomeworkStatus = 'completed' | 'missing' | 'late' | 'excused' | 'partial' | 'unmarked';
 
 export interface HomeworkRecord {
   id: string;
@@ -126,10 +169,52 @@ export interface OverallTermScore {
   studentNumber: string;
   plusCount: number;
   minusCount: number;
-  plusMinusNormalized: number; // 0-100
-  quizAverage: number; // 0-100
-  homeworkScore: number; // 0-100
-  notebookAverage: number; // 0-100
-  finalScore: number; // 0-100 weighted
+  hasPlusMinusData: boolean;
+  plusMinusNormalized: number | null; // 0-100 or null if no logs
+  hasQuizData: boolean;
+  quizAverage: number | null; // 0-100 or null if no quiz
+  hasHomeworkData: boolean;
+  homeworkScore: number | null; // 0-100 or null if no hw
+  hasNotebookData: boolean;
+  notebookAverage: number | null; // 0-100 or null if no notebook
+  hasAnyData: boolean;
+  finalScore: number | null; // 0-100 weighted or null if no data
   letterGrade: string;
 }
+
+// ----------------------------------------------------
+// DERS PROGRAMI (TIMETABLE / SCHEDULE) TYPE DEFINITIONS
+// ----------------------------------------------------
+export type ScheduleDay = 'Pzt' | 'Sal' | 'Çar' | 'Per' | 'Cum' | 'Cmt' | 'Paz';
+
+export interface PeriodTime {
+  period: number;        // 1, 2, 3...
+  startTime: string;     // e.g. "09:00"
+  endTime: string;       // e.g. "09:40"
+  label?: string;        // e.g. "1. Ders"
+}
+
+export interface ScheduleConfig {
+  periodsPerDay: number;           // e.g. 8, 10, 15 (default: 10)
+  lessonDurationMinutes: number;   // e.g. 40 min
+  breakDurationMinutes: number;    // e.g. 10 min
+  firstLessonStartTime: string;    // e.g. "09:00"
+  activeDays: ScheduleDay[];       // e.g. ['Pzt', 'Sal', 'Çar', 'Per', 'Cum']
+  lunchBreakAfterPeriod?: number;  // e.g. 4 (after 4th period)
+  lunchBreakMinutes?: number;      // e.g. 40 min
+  periodTimes: PeriodTime[];       // List of custom/calculated start-end times
+}
+
+export interface ScheduleLesson {
+  id: string;
+  title: string;          // İsim (Örn: "10-C Matematik" veya "10-C")
+  shortName: string;      // Kısaltma (Örn: "10C", "10C REH", "12D", "11E", "12A UYG")
+  color: string;          // Hex Color code
+  day: ScheduleDay;       // 'Pzt' | 'Sal' | 'Çar' | 'Per' | 'Cum' | 'Cmt' | 'Paz'
+  period: number;         // 1, 2, 3, 4, 5...
+  startTime?: string;     // e.g. "09:00"
+  endTime?: string;       // e.g. "09:40"
+  classId?: string;       // Optional link to existing ClassRoom
+  note?: string;          // Optional notes
+}
+

@@ -1,4 +1,4 @@
-import { ClassRoom, Student, PerformanceLog, QuizScore, Homework, HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, ParentFeedbackLog } from './types';
+import { ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, ParentFeedbackLog } from './types';
 
 export const INITIAL_CLASSES: ClassRoom[] = [
   {
@@ -19,9 +19,9 @@ export const INITIAL_CLASSES: ClassRoom[] = [
   },
   {
     id: 'class-3',
-    name: '8-C',
-    grade: '8',
-    subject: 'Fen Bilimleri',
+    name: '11-C',
+    grade: '11',
+    subject: 'Kimya',
     term: '2025-2026 2. Dönem',
     createdAt: '2026-02-01',
   },
@@ -132,6 +132,14 @@ export const INITIAL_STUDENTS: Student[] = [
 ];
 
 export const INITIAL_PLUS_MINUS_LOGS: PerformanceLog[] = [
+  // 1. Dönem Kayıtları (2025 Sonbahar / Kış)
+  { id: 'pm-101', studentId: 'std-101', classId: 'class-1', date: '2025-10-14', type: 'plus', category: 'Ders Katılımı', note: '1. Dönem: Denklem çözümlerinde çok aktifti' },
+  { id: 'pm-102', studentId: 'std-101', classId: 'class-1', date: '2025-11-20', type: 'plus', category: 'Soru Çözümü', note: '1. Dönem: Çözülmesi zor soruyu doğru yaptı' },
+  { id: 'pm-103', studentId: 'std-102', classId: 'class-1', date: '2025-10-15', type: 'plus', category: 'Ödev Hazırlığı', note: '1. Dönem: Ödevini eksiksiz hazırlamış' },
+  { id: 'pm-104', studentId: 'std-103', classId: 'class-1', date: '2025-11-12', type: 'minus', category: 'Sınıf Kuralları', note: '1. Dönem: Derse geç kaldı' },
+  { id: 'pm-105', studentId: 'std-104', classId: 'class-1', date: '2025-12-04', type: 'plus', category: 'Grup Çalışması', note: '1. Dönem: Proje sunumu başarılı' },
+
+  // 2. Dönem Kayıtları (2026 Bahar)
   { id: 'pm-1', studentId: 'std-101', classId: 'class-1', date: '2026-02-10', type: 'plus', category: 'Ders Katılımı', note: 'Derste tahtaya kalkıp soru çözdü' },
   { id: 'pm-2', studentId: 'std-101', classId: 'class-1', date: '2026-02-11', type: 'plus', category: 'Soru Çözümü', note: 'Ekstra problemleri doğru tamamladı' },
   { id: 'pm-3', studentId: 'std-102', classId: 'class-1', date: '2026-02-10', type: 'plus', category: 'Ders Katılımı', note: 'Aktif katılım' },
@@ -143,18 +151,70 @@ export const INITIAL_PLUS_MINUS_LOGS: PerformanceLog[] = [
   { id: 'pm-9', studentId: 'std-105', classId: 'class-1', date: '2026-02-11', type: 'minus', category: 'Ders Katılımı', note: 'Ders materyali eksik' },
 ];
 
+export const INITIAL_QUIZ_DEFINITIONS: Quiz[] = [
+  // 1. Dönem
+  {
+    id: 'quiz-def-term1-1',
+    classId: 'class-1',
+    title: '1. Dönem Quiz 1: Kümeler ve Mantık',
+    date: '2025-10-22',
+    description: 'Kümelerde birleşim, kesişim ve sembolik mantık',
+  },
+  {
+    id: 'quiz-def-term1-2',
+    classId: 'class-1',
+    title: '1. Dönem Quiz 2: Sayı Basamakları',
+    date: '2025-12-10',
+    description: 'Basamak analizi ve bölünebilme kuralları',
+  },
+  // 2. Dönem
+  {
+    id: 'quiz-def-1',
+    classId: 'class-1',
+    title: 'Quiz 1: Üslü Sayılar',
+    date: '2026-02-05',
+    description: 'Üslü ifadelerde temel kavramlar, çarpma ve bölme kuralları',
+  },
+  {
+    id: 'quiz-def-2',
+    classId: 'class-1',
+    title: 'Quiz 2: Köklü İfadeler',
+    date: '2026-02-12',
+    description: 'Kareköklü ifadeler ve toplama/çıkarma uygulamaları',
+  },
+];
+
 export const INITIAL_QUIZZES: QuizScore[] = [
-  { id: 'qz-1', studentId: 'std-101', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 95, date: '2026-02-05' },
-  { id: 'qz-2', studentId: 'std-101', classId: 'class-1', quizTitle: 'Quiz 2: Köklü İfadeler', score: 90, date: '2026-02-12' },
-  { id: 'qz-3', studentId: 'std-102', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 88, date: '2026-02-05' },
-  { id: 'qz-4', studentId: 'std-102', classId: 'class-1', quizTitle: 'Quiz 2: Köklü İfadeler', score: 92, date: '2026-02-12' },
-  { id: 'qz-5', studentId: 'std-103', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 65, date: '2026-02-05' },
-  { id: 'qz-6', studentId: 'std-103', classId: 'class-1', quizTitle: 'Quiz 2: Köklü İfadeler', score: 70, date: '2026-02-12' },
-  { id: 'qz-7', studentId: 'std-104', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 82, date: '2026-02-05' },
-  { id: 'qz-8', studentId: 'std-105', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 55, date: '2026-02-05' },
+  // 1. Dönem Notları
+  { id: 'qz-101', quizId: 'quiz-def-term1-1', studentId: 'std-101', classId: 'class-1', quizTitle: '1. Dönem Quiz 1: Kümeler ve Mantık', score: 92, date: '2025-10-22' },
+  { id: 'qz-102', quizId: 'quiz-def-term1-2', studentId: 'std-101', classId: 'class-1', quizTitle: '1. Dönem Quiz 2: Sayı Basamakları', score: 88, date: '2025-12-10' },
+  { id: 'qz-103', quizId: 'quiz-def-term1-1', studentId: 'std-102', classId: 'class-1', quizTitle: '1. Dönem Quiz 1: Kümeler ve Mantık', score: 96, date: '2025-10-22' },
+  { id: 'qz-104', quizId: 'quiz-def-term1-2', studentId: 'std-102', classId: 'class-1', quizTitle: '1. Dönem Quiz 2: Sayı Basamakları', score: 94, date: '2025-12-10' },
+  { id: 'qz-105', quizId: 'quiz-def-term1-1', studentId: 'std-103', classId: 'class-1', quizTitle: '1. Dönem Quiz 1: Kümeler ve Mantık', score: 72, date: '2025-10-22' },
+  { id: 'qz-106', quizId: 'quiz-def-term1-2', studentId: 'std-103', classId: 'class-1', quizTitle: '1. Dönem Quiz 2: Sayı Basamakları', score: 68, date: '2025-12-10' },
+
+  // 2. Dönem Notları
+  { id: 'qz-1', quizId: 'quiz-def-1', studentId: 'std-101', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 95, date: '2026-02-05' },
+  { id: 'qz-2', quizId: 'quiz-def-2', studentId: 'std-101', classId: 'class-1', quizTitle: 'Quiz 2: Köklü İfadeler', score: 90, date: '2026-02-12' },
+  { id: 'qz-3', quizId: 'quiz-def-1', studentId: 'std-102', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 88, date: '2026-02-05' },
+  { id: 'qz-4', quizId: 'quiz-def-2', studentId: 'std-102', classId: 'class-1', quizTitle: 'Quiz 2: Köklü İfadeler', score: 92, date: '2026-02-12' },
+  { id: 'qz-5', quizId: 'quiz-def-1', studentId: 'std-103', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 65, date: '2026-02-05' },
+  { id: 'qz-6', quizId: 'quiz-def-2', studentId: 'std-103', classId: 'class-1', quizTitle: 'Quiz 2: Köklü İfadeler', score: 70, date: '2026-02-12' },
+  { id: 'qz-7', quizId: 'quiz-def-1', studentId: 'std-104', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 82, date: '2026-02-05' },
+  { id: 'qz-8', quizId: 'quiz-def-1', studentId: 'std-105', classId: 'class-1', quizTitle: 'Quiz 1: Üslü Sayılar', score: 55, date: '2026-02-05' },
 ];
 
 export const INITIAL_HOMEWORKS: Homework[] = [
+  // 1. Dönem
+  {
+    id: 'hw-term1-1',
+    classId: 'class-1',
+    title: '1. Dönem: Mantık Önermeler Testi',
+    description: 'Sayfa 15-18 arası sorular tamamlanacak',
+    assignedDate: '2025-10-10',
+    dueDate: '2025-10-17',
+  },
+  // 2. Dönem
   {
     id: 'hw-1',
     classId: 'class-1',
@@ -174,6 +234,12 @@ export const INITIAL_HOMEWORKS: Homework[] = [
 ];
 
 export const INITIAL_HOMEWORK_RECORDS: HomeworkRecord[] = [
+  // 1. Dönem
+  { id: 'hwr-101', homeworkId: 'hw-term1-1', studentId: 'std-101', status: 'completed', updatedAt: '2025-10-16' },
+  { id: 'hwr-102', homeworkId: 'hw-term1-1', studentId: 'std-102', status: 'completed', updatedAt: '2025-10-16' },
+  { id: 'hwr-103', homeworkId: 'hw-term1-1', studentId: 'std-103', status: 'completed', updatedAt: '2025-10-17' },
+  { id: 'hwr-104', homeworkId: 'hw-term1-1', studentId: 'std-104', status: 'completed', updatedAt: '2025-10-17' },
+  // 2. Dönem
   { id: 'hwr-1', homeworkId: 'hw-1', studentId: 'std-101', status: 'completed', updatedAt: '2026-02-08' },
   { id: 'hwr-2', homeworkId: 'hw-1', studentId: 'std-102', status: 'completed', updatedAt: '2026-02-08' },
   { id: 'hwr-3', homeworkId: 'hw-1', studentId: 'std-103', status: 'missing', updatedAt: '2026-02-08' },
@@ -182,6 +248,12 @@ export const INITIAL_HOMEWORK_RECORDS: HomeworkRecord[] = [
 ];
 
 export const INITIAL_NOTEBOOK_CONTROLS: NotebookControl[] = [
+  // 1. Dönem
+  { id: 'nb-101', studentId: 'std-101', classId: 'class-1', date: '2025-11-15', status: 'full', percentage: 95, note: '1. Dönem defteri eksiksiz' },
+  { id: 'nb-102', studentId: 'std-102', classId: 'class-1', date: '2025-11-15', status: 'full', percentage: 100, note: '1. Dönem harika tertip' },
+  { id: 'nb-103', studentId: 'std-103', classId: 'class-1', date: '2025-11-15', status: 'partial', percentage: 75, note: '1. Dönem birkaç sayfa eksik' },
+
+  // 2. Dönem
   { id: 'nb-1', studentId: 'std-101', classId: 'class-1', date: '2026-02-10', status: 'full', percentage: 100, note: 'Tüm konu özetleri ve çizimler tam.' },
   { id: 'nb-2', studentId: 'std-102', classId: 'class-1', date: '2026-02-10', status: 'full', percentage: 95, note: 'Çok temiz ve tertipli.' },
   { id: 'nb-3', studentId: 'std-103', classId: 'class-1', date: '2026-02-10', status: 'partial', percentage: 60, note: 'Son 2 haftalık formüller eksik.' },

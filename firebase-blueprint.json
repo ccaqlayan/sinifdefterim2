@@ -131,6 +131,35 @@
         "sentBy": { "type": "string" }
       },
       "required": ["id", "studentId", "message"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Teacher and parent user profiles and preferences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "authMethod": { "type": "string" },
+        "subject": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "luckyDrawSettings": { "type": "object" }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "LuckyDrawSettings": {
+      "title": "LuckyDrawSettings",
+      "description": "Persisted wheel and draw configurations for teachers",
+      "type": "object",
+      "properties": {
+        "soundEnabled": { "type": "boolean" },
+        "autoExcludeWinner": { "type": "boolean" },
+        "spinDurationSeconds": { "type": "number" },
+        "nameFormat": { "type": "string" },
+        "showStudentNumber": { "type": "boolean" }
+      }
     }
   },
   "firestore": {
@@ -169,6 +198,14 @@
     "feedbackLogs": {
       "schema": "ParentFeedbackLog",
       "description": "Collection of feedback sent to parents"
+    },
+    "userProfiles": {
+      "schema": "UserProfile",
+      "description": "User profiles and custom preferences"
+    },
+    "luckyDrawSettings": {
+      "schema": "LuckyDrawSettings",
+      "description": "Teacher lucky draw settings"
     }
   }
 }

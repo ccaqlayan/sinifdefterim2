@@ -1,6 +1,6 @@
 {
   "name": "Sınıf İçi Performans Takip Sistemi",
-  "description": "Branş öğretmenleri için mobil öncelikli sınıf içi performans, artı/eksi, defter, ödev ve quiz takip, ağırlıklı dönem sonu puanlama ve veli bildirim portalı.",
+  "description": "Branş öğretmenleri için mobil öncelikli sınıf içi performans, şans çarkı kura çekimi, artı/eksi, defter, ödev ve quiz takip, ağırlıklı dönem sonu puanlama ve veli bildirim portalı.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

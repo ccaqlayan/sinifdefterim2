@@ -13,52 +13,79 @@ export function calculateStudentOverallScore(
   const plusCount = studentLogs.filter(l => l.type === 'plus').length;
   const minusCount = studentLogs.filter(l => l.type === 'minus').length;
   
-  const netPlusMinus = plusCount - minusCount;
-  // Base 75 + (Net * 5), bounded 0-100
-  let plusMinusNormalized = Math.min(100, Math.max(0, 75 + (netPlusMinus * 5)));
-  if (studentLogs.length === 0) {
-    plusMinusNormalized = 80; // Default neutral baseline
+  const hasPlusMinusData = studentLogs.length > 0;
+  let plusMinusNormalized: number | null = null;
+  if (hasPlusMinusData) {
+    const netPlusMinus = plusCount - minusCount;
+    // Base 75 + (Net * 5), bounded 0-100
+    plusMinusNormalized = Math.min(100, Math.max(0, 75 + (netPlusMinus * 5)));
   }
 
   // 2. Quiz Average Calculation
   const studentQuizzes = quizzes.filter(q => q.studentId === student.id);
-  const quizAverage = studentQuizzes.length > 0
+  const hasQuizData = studentQuizzes.length > 0;
+  const quizAverage: number | null = hasQuizData
     ? Math.round(studentQuizzes.reduce((acc, q) => acc + q.score, 0) / studentQuizzes.length)
-    : 85;
+    : null;
 
   // 3. Homework Score Calculation
   const studentHW = homeworkRecords.filter(h => h.studentId === student.id);
-  let homeworkScore = 85;
-  if (studentHW.length > 0) {
+  const hasHomeworkData = studentHW.length > 0;
+  let homeworkScore: number | null = null;
+  if (hasHomeworkData) {
     const totalHWScore = studentHW.reduce((acc, hw) => {
       if (hw.status === 'completed' || hw.status === 'excused') return acc + 100;
+      if (hw.status === 'partial') return acc + 50;
       if (hw.status === 'late') return acc + 70;
-      return acc + 0; // missing
+      return acc + 0; // missing or unmarked
     }, 0);
     homeworkScore = Math.round(totalHWScore / studentHW.length);
   }
 
   // 4. Notebook Control Average
   const studentNotebooks = notebookControls.filter(n => n.studentId === student.id);
-  const notebookAverage = studentNotebooks.length > 0
+  const hasNotebookData = studentNotebooks.length > 0;
+  const notebookAverage: number | null = hasNotebookData
     ? Math.round(studentNotebooks.reduce((acc, n) => acc + n.percentage, 0) / studentNotebooks.length)
-    : 80;
+    : null;
 
-  // 5. Final Weighted Term Score
-  const qw = weights.quizWeight / 100;
-  const pmw = weights.plusMinusWeight / 100;
-  const hww = weights.homeworkWeight / 100;
-  const nbw = weights.notebookWeight / 100;
+  // 5. Final Weighted Term Score (Calculated only with available criteria)
+  const hasAnyData = hasPlusMinusData || hasQuizData || hasHomeworkData || hasNotebookData;
+  let finalScore: number | null = null;
+  let letterGrade = 'Veri Yok';
 
-  const rawFinal = (quizAverage * qw) + (plusMinusNormalized * pmw) + (homeworkScore * hww) + (notebookAverage * nbw);
-  const finalScore = Math.round(rawFinal * 10) / 10;
+  if (hasAnyData) {
+    let totalWeightedScore = 0;
+    let activeWeightsSum = 0;
 
-  // Letter Grade / Evaluation
-  let letterGrade = 'Pekiyi (5)';
-  if (finalScore < 45) letterGrade = 'Zayıf (1)';
-  else if (finalScore < 55) letterGrade = 'Geçer (2)';
-  else if (finalScore < 70) letterGrade = 'Orta (3)';
-  else if (finalScore < 85) letterGrade = 'İyi (4)';
+    if (hasQuizData && quizAverage !== null && weights.quizWeight > 0) {
+      totalWeightedScore += quizAverage * weights.quizWeight;
+      activeWeightsSum += weights.quizWeight;
+    }
+    if (hasPlusMinusData && plusMinusNormalized !== null && weights.plusMinusWeight > 0) {
+      totalWeightedScore += plusMinusNormalized * weights.plusMinusWeight;
+      activeWeightsSum += weights.plusMinusWeight;
+    }
+    if (hasHomeworkData && homeworkScore !== null && weights.homeworkWeight > 0) {
+      totalWeightedScore += homeworkScore * weights.homeworkWeight;
+      activeWeightsSum += weights.homeworkWeight;
+    }
+    if (hasNotebookData && notebookAverage !== null && weights.notebookWeight > 0) {
+      totalWeightedScore += notebookAverage * weights.notebookWeight;
+      activeWeightsSum += weights.notebookWeight;
+    }
+
+    if (activeWeightsSum > 0) {
+      const rawFinal = totalWeightedScore / activeWeightsSum;
+      finalScore = Math.round(rawFinal * 10) / 10;
+
+      if (finalScore < 45) letterGrade = 'Zayıf (1)';
+      else if (finalScore < 55) letterGrade = 'Geçer (2)';
+      else if (finalScore < 70) letterGrade = 'Orta (3)';
+      else if (finalScore < 85) letterGrade = 'İyi (4)';
+      else letterGrade = 'Pekiyi (5)';
+    }
+  }
 
   return {
     studentId: student.id,
@@ -66,10 +93,15 @@ export function calculateStudentOverallScore(
     studentNumber: student.number,
     plusCount,
     minusCount,
+    hasPlusMinusData,
     plusMinusNormalized,
+    hasQuizData,
     quizAverage,
+    hasHomeworkData,
     homeworkScore,
+    hasNotebookData,
     notebookAverage,
+    hasAnyData,
     finalScore,
     letterGrade,
   };

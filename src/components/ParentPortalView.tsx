@@ -112,11 +112,11 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
         <div className="mt-4 pt-4 border-t border-indigo-700/50 flex items-center justify-between">
           <div>
             <p className="text-[11px] text-indigo-200 font-medium">Dönem Performans Notu</p>
-            <p className="text-xs text-amber-300 font-bold">{score?.letterGrade}</p>
+            <p className="text-xs text-amber-300 font-bold">{score?.letterGrade || 'Veri Yok'}</p>
           </div>
           <div className="text-right">
-            <span className="text-3xl font-black text-white">{score?.finalScore}</span>
-            <span className="text-xs text-indigo-200 font-normal"> / 100</span>
+            <span className="text-3xl font-black text-white">{score?.finalScore !== null && score?.finalScore !== undefined ? score.finalScore : '-'}</span>
+            {score?.finalScore !== null && score?.finalScore !== undefined && <span className="text-xs text-indigo-200 font-normal"> / 100</span>}
           </div>
         </div>
       </div>
@@ -138,9 +138,12 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             <span>Sınıf İçi Katılım</span>
             <span className="text-emerald-600">+{score?.plusCount} / -{score?.minusCount}</span>
           </div>
-          <div className="text-xl font-black text-slate-900">{score?.plusMinusNormalized} <span className="text-xs text-slate-400 font-normal">/100</span></div>
+          <div className="text-xl font-black text-slate-900">
+            {score?.plusMinusNormalized !== null && score?.plusMinusNormalized !== undefined ? score.plusMinusNormalized : '-'}{' '}
+            {score?.plusMinusNormalized !== null && score?.plusMinusNormalized !== undefined && <span className="text-xs text-slate-400 font-normal">/100</span>}
+          </div>
           <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-1">
-            <div style={{ width: `${score?.plusMinusNormalized}%` }} className="h-full bg-emerald-500" />
+            <div style={{ width: `${score?.plusMinusNormalized ?? 0}%` }} className="h-full bg-emerald-500" />
           </div>
         </div>
 
@@ -149,9 +152,12 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             <span>Quiz Ortalaması</span>
             <span className="text-indigo-600">Sınavlar</span>
           </div>
-          <div className="text-xl font-black text-slate-900">{score?.quizAverage} <span className="text-xs text-slate-400 font-normal">/100</span></div>
+          <div className="text-xl font-black text-slate-900">
+            {score?.quizAverage !== null && score?.quizAverage !== undefined ? score.quizAverage : '-'}{' '}
+            {score?.quizAverage !== null && score?.quizAverage !== undefined && <span className="text-xs text-slate-400 font-normal">/100</span>}
+          </div>
           <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-1">
-            <div style={{ width: `${score?.quizAverage}%` }} className="h-full bg-indigo-500" />
+            <div style={{ width: `${score?.quizAverage ?? 0}%` }} className="h-full bg-indigo-500" />
           </div>
         </div>
 
@@ -160,9 +166,12 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             <span>Ödev Takip Puanı</span>
             <span className="text-sky-600">Teslimler</span>
           </div>
-          <div className="text-xl font-black text-slate-900">{score?.homeworkScore} <span className="text-xs text-slate-400 font-normal">/100</span></div>
+          <div className="text-xl font-black text-slate-900">
+            {score?.homeworkScore !== null && score?.homeworkScore !== undefined ? score.homeworkScore : '-'}{' '}
+            {score?.homeworkScore !== null && score?.homeworkScore !== undefined && <span className="text-xs text-slate-400 font-normal">/100</span>}
+          </div>
           <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-1">
-            <div style={{ width: `${score?.homeworkScore}%` }} className="h-full bg-sky-500" />
+            <div style={{ width: `${score?.homeworkScore ?? 0}%` }} className="h-full bg-sky-500" />
           </div>
         </div>
 
@@ -171,9 +180,11 @@ export const ParentPortalView: React.FC<ParentPortalViewProps> = ({
             <span>Defter Düzeni</span>
             <span className="text-amber-600">Kontrol</span>
           </div>
-          <div className="text-xl font-black text-slate-900">%{score?.notebookAverage}</div>
+          <div className="text-xl font-black text-slate-900">
+            {score?.notebookAverage !== null && score?.notebookAverage !== undefined ? `%${score.notebookAverage}` : '-'}
+          </div>
           <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-1">
-            <div style={{ width: `${score?.notebookAverage}%` }} className="h-full bg-amber-500" />
+            <div style={{ width: `${score?.notebookAverage ?? 0}%` }} className="h-full bg-amber-500" />
           </div>
         </div>
       </div>

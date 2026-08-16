@@ -141,6 +141,81 @@ Lütfen:
   }
 });
 
+// AI Endpoint 4: Parse PDF / Image Class List Grid (e-Okul Fotoğraflı Liste)
+app.post("/api/gemini/parse-pdf-class-list", async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+    const ai = getGeminiClient();
+
+    if (!ai) {
+      return res.status(400).json({ error: "Gemini API anahtarı ayarlanmamış." });
+    }
+
+    if (!imageBase64) {
+      return res.status(400).json({ error: "Görsel verisi bulunamadı." });
+    }
+
+    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
+    const prompt = `Sen e-Okul ve okul sınıf fotoğraflı öğrenci listesi belgelerini analiz eden uzman bir yapay zekasın.
+Sana verilen resim, bir e-Okul veya okul fotoğraflı sınıf listesi belgesidir.
+
+Görevlerin:
+1. "className": Sayfanın üst alanında yer alan sınıf/şube adını tespit et (Örn: "AL - 9. Sınıf / C Şubesi" -> "9-C", "10-A", "11/B", "5-A" şeklinde kısa sınıf adı).
+2. "students": Sayfadaki HER BİR ÖĞRENCİ İÇİN aşağıdaki bilgileri içeren JSON dizisi oluştur:
+   - "number": Öğrencinin vesikalık fotoğrafının altında yer alan okul numarası (örn: "57", "245", "1352"). Sadece rakamlar.
+   - "fullName": Öğrencinin fotoğrafının altındaki adı ve soyadı (örn: "RUMEYSA GÜL DEMİROĞLU").
+   - "photoBox": Öğrencinin YALNIZCA vesikalık/kafa fotoğrafını kapsayan dikdörtgen kutunun normalize koordinatları [ymin, xmin, ymax, xmax].
+     ÖNEMLİ KOORDİNAT KURALLARI:
+     - Değerler 0 ile 1000 arasında tamsayılar olmalıdır (resim yüksekliği ve genişliğine göre 0-1000 skalası).
+     - photoBox SADECE öğrencinin vesikalık fotoğraf çerçevesini kapsasın; alttaki isim ve numara metinlerini İÇERMESİN.
+
+Yanıtını YALNIZCA geçerli bir JSON nesnesi olarak ver. Başka açıklama veya markdown bloğu ekleme.
+Örnek Yanıt Formatı:
+{
+  "className": "9/C",
+  "students": [
+    {
+      "number": "57",
+      "fullName": "RUMEYSA GÜL DEMİROĞLU",
+      "photoBox": [100, 50, 180, 110]
+    }
+  ]
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType: "image/jpeg", data: base64Data } },
+            { text: prompt },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const responseText = response.text || "{}";
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(responseText);
+    } catch (e) {
+      // Fallback cleanup if response has markdown fences
+      const cleanJson = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+      parsed = JSON.parse(cleanJson);
+    }
+
+    res.json(parsed);
+  } catch (err: any) {
+    console.error("PDF Class List Parsing Error:", err);
+    res.status(500).json({ error: "PDF sayfasından öğrenciler ayrıştırılamadı.", details: err.message });
+  }
+});
+
 async function startServer() {
   // Vite middleware in dev mode or static files in production
   if (process.env.NODE_ENV !== "production") {

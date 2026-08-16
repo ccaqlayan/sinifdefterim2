@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { Student, PerformanceLog, ClassRoom, PlusMinusCategory } from '../types';
+import { 
+  Student, PerformanceLog, ClassRoom, PlusMinusCategory, 
+  QuizScore, Homework, HomeworkRecord, NotebookControl, WeightSettings 
+} from '../types';
 import { playScoreSound } from '../utils/audio';
-import { Plus, Minus, Search, CheckCircle2, History, AlertCircle, Sparkles } from 'lucide-react';
+import { StudentDetailModal } from './StudentDetailModal';
+import { Plus, Minus, Search, Sparkles, Dices, ExternalLink } from 'lucide-react';
 
 interface QuickScoreViewProps {
   currentClass: ClassRoom;
@@ -9,6 +13,12 @@ interface QuickScoreViewProps {
   plusMinusLogs: PerformanceLog[];
   onAddLog: (log: Omit<PerformanceLog, 'id'>) => void;
   onDeleteLog: (id: string) => void;
+  onOpenLuckyDraw?: () => void;
+  quizzes?: QuizScore[];
+  homeworks?: Homework[];
+  homeworkRecords?: HomeworkRecord[];
+  notebookControls?: NotebookControl[];
+  weights?: WeightSettings;
 }
 
 const CATEGORIES: PlusMinusCategory[] = [
@@ -26,11 +36,17 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
   plusMinusLogs,
   onAddLog,
   onDeleteLog,
+  onOpenLuckyDraw,
+  quizzes = [],
+  homeworks = [],
+  homeworkRecords = [],
+  notebookControls = [],
+  weights = { homeworkPercent: 30, quizPercent: 40, notebookPercent: 15, plusMinusPercent: 15 },
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<PlusMinusCategory>('Ders Katılımı');
-  const [activeStudentIdForHistory, setActiveStudentIdForHistory] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
+  const [selectedStudentForModal, setSelectedStudentForModal] = useState<Student | null>(null);
 
   const filteredStudents = students
     .filter((s) => s.classId === currentClass.id)
@@ -43,14 +59,17 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
 
   const handleScore = (studentId: string, type: 'plus' | 'minus') => {
     playScoreSound(type);
-    onAddLog({
+    const logData: Omit<PerformanceLog, 'id'> = {
       studentId,
       classId: currentClass.id,
       date: new Date().toISOString().slice(0, 10),
       type,
       category: selectedCategory,
-      note: noteInput.trim() || undefined,
-    });
+    };
+    if (noteInput.trim()) {
+      logData.note = noteInput.trim();
+    }
+    onAddLog(logData);
     // Reset note after scoring
     setNoteInput('');
   };
@@ -113,6 +132,16 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
             className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs font-medium"
           />
         </div>
+        {onOpenLuckyDraw && (
+          <button
+            onClick={onOpenLuckyDraw}
+            className="px-3 py-2 bg-linear-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shrink-0 flex items-center gap-1.5 shadow-sm shadow-fuchsia-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            title="Şans Çarkı / Kura Çek"
+          >
+            <Dices className="w-4 h-4" />
+            <span className="hidden sm:inline">Kura Çek</span>
+          </button>
+        )}
         <div className="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5">
           <span>{filteredStudents.length}</span>
           <span className="text-slate-400 font-normal">Öğrenci</span>
@@ -128,57 +157,66 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
         ) : (
           filteredStudents.map((student) => {
             const counts = getStudentPlusMinusCount(student.id);
-            const studentLogs = plusMinusLogs.filter((l) => l.studentId === student.id);
 
             return (
               <div
                 key={student.id}
-                className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs transition-all hover:border-slate-300"
+                className="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs transition-all hover:border-slate-300"
               >
-                <div className="flex items-center gap-3">
-                  {/* Photo / Avatar */}
-                  <img
-                    src={
-                      student.photoUrl ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        student.name + ' ' + student.surname
-                      )}&background=6366f1&color=fff`
-                    }
-                    alt={student.name}
-                    className="w-11 h-11 rounded-xl object-cover border border-slate-200 shrink-0"
-                  />
+                <div className="flex items-center justify-between gap-3">
+                  {/* Clickable Student Info: Avatar + Name + Badges */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStudentForModal(student)}
+                    className="flex items-center gap-3 min-w-0 flex-1 text-left group cursor-pointer"
+                    title={`${student.name} ${student.surname} - Detaylı Geçmiş ve Karne`}
+                  >
+                    {/* Photo / Avatar */}
+                    <img
+                      src={
+                        student.photoUrl ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          student.name + ' ' + student.surname
+                        )}&background=6366f1&color=fff`
+                      }
+                      alt={student.name}
+                      className="w-11 h-11 rounded-xl object-cover border border-slate-200 group-hover:border-indigo-500 transition-all shrink-0"
+                    />
 
-                  {/* Info & Badges */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                        #{student.number}
-                      </span>
-                      <h4 className="text-sm font-extrabold text-slate-900 truncate">
-                        {student.name} {student.surname}
-                      </h4>
-                    </div>
+                    {/* Info & Badges */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                          #{student.number}
+                        </span>
+                        <h4 className="text-sm font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors truncate flex items-center gap-1">
+                          {student.name} {student.surname}
+                          <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 opacity-60 group-hover:opacity-100 shrink-0" />
+                        </h4>
+                      </div>
 
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[11px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-md border border-emerald-100">
-                        +{counts.plus}
-                      </span>
-                      <span className="text-[11px] bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-md border border-rose-100">
-                        -{counts.minus}
-                      </span>
-                      <span
-                        className={`text-[11px] font-extrabold px-2 py-0.5 rounded-md ${
-                          counts.total >= 0 ? 'text-indigo-700 bg-indigo-50' : 'text-amber-700 bg-amber-50'
-                        }`}
-                      >
-                        Net: {counts.total > 0 ? `+${counts.total}` : counts.total}
-                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[11px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-md border border-emerald-100">
+                          +{counts.plus}
+                        </span>
+                        <span className="text-[11px] bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-md border border-rose-100">
+                          -{counts.minus}
+                        </span>
+                        <span
+                          className={`text-[11px] font-extrabold px-2 py-0.5 rounded-md ${
+                            counts.total >= 0 ? 'text-indigo-700 bg-indigo-50' : 'text-amber-700 bg-amber-50'
+                          }`}
+                        >
+                          Net: {counts.total > 0 ? `+${counts.total}` : counts.total}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Plus / Minus Quick Scoring Buttons */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
+                      type="button"
                       onClick={() => handleScore(student.id, 'plus')}
                       className="w-10 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-black text-xl flex items-center justify-center shadow-xs transition-all cursor-pointer"
                       title="Artı Ver (+1)"
@@ -186,6 +224,7 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
                       <Plus className="w-6 h-6 stroke-[3]" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleScore(student.id, 'minus')}
                       className="w-10 h-10 rounded-xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-black text-xl flex items-center justify-center shadow-xs transition-all cursor-pointer"
                       title="Eksi Ver (-1)"
@@ -194,66 +233,26 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
                     </button>
                   </div>
                 </div>
-
-                {/* Bottom Toggle for Student History */}
-                <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                  <button
-                    onClick={() =>
-                      setActiveStudentIdForHistory(
-                        activeStudentIdForHistory === student.id ? null : student.id
-                      )
-                    }
-                    className="text-slate-500 hover:text-indigo-600 font-semibold flex items-center gap-1"
-                  >
-                    <History className="w-3.5 h-3.5" /> Geçmiş Kayıtlar ({studentLogs.length})
-                  </button>
-                  {student.notes && (
-                    <span className="text-slate-400 font-normal truncate max-w-[180px]">
-                      Not: {student.notes}
-                    </span>
-                  )}
-                </div>
-
-                {/* Expanded Student History Drawer */}
-                {activeStudentIdForHistory === student.id && (
-                  <div className="mt-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5 animate-in fade-in duration-150">
-                    <div className="font-bold text-slate-700 mb-1">Son Değerlendirmeler:</div>
-                    {studentLogs.length === 0 ? (
-                      <p className="text-slate-400 italic">Henüz artı/eksi kaydı yok.</p>
-                    ) : (
-                      studentLogs.slice(-5).reverse().map((log) => (
-                        <div key={log.id} className="flex items-center justify-between bg-white p-1.5 rounded-lg border border-slate-200/80">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`px-1.5 py-0.5 rounded font-black text-[10px] ${
-                                log.type === 'plus' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                              }`}
-                            >
-                              {log.type === 'plus' ? '+1' : '-1'}
-                            </span>
-                            <span className="font-bold text-slate-800">{log.category}</span>
-                            {log.note && <span className="text-slate-500 italic">({log.note})</span>}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-slate-400">{log.date}</span>
-                            <button
-                              onClick={() => onDeleteLog(log.id)}
-                              className="text-rose-500 hover:text-rose-700 font-bold px-1"
-                              title="Sil"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
               </div>
             );
           })
         )}
       </div>
+
+      {/* Comprehensive Student Detail & History Modal */}
+      <StudentDetailModal
+        isOpen={!!selectedStudentForModal}
+        onClose={() => setSelectedStudentForModal(null)}
+        student={selectedStudentForModal}
+        currentClass={currentClass}
+        plusMinusLogs={plusMinusLogs}
+        quizzes={quizzes}
+        homeworks={homeworks}
+        homeworkRecords={homeworkRecords}
+        notebookControls={notebookControls}
+        weights={weights}
+        initialTab="plusminus"
+      />
     </div>
   );
 };

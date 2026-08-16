@@ -1,27 +1,45 @@
 import { 
-  ClassRoom, Student, PerformanceLog, QuizScore, Homework, 
-  HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, ParentFeedbackLog, User 
+  ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, 
+  HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, ParentFeedbackLog, User, LuckyDrawSettings,
+  ScheduleConfig, ScheduleLesson, AcademicYearConfig 
 } from '../types';
 import { 
   INITIAL_CLASSES, INITIAL_STUDENTS, INITIAL_PLUS_MINUS_LOGS, 
-  INITIAL_QUIZZES, INITIAL_HOMEWORKS, INITIAL_HOMEWORK_RECORDS, 
+  INITIAL_QUIZ_DEFINITIONS, INITIAL_QUIZZES, INITIAL_HOMEWORKS, INITIAL_HOMEWORK_RECORDS, 
   INITIAL_NOTEBOOK_CONTROLS, INITIAL_WEIGHT_SETTINGS, 
   INITIAL_NOTIFICATION_SETTINGS, INITIAL_FEEDBACK_LOGS 
 } from '../mockData';
+import { DEFAULT_SCHEDULE_CONFIG, INITIAL_SCHEDULE_LESSONS } from './scheduleUtils';
+import { DEFAULT_ACADEMIC_YEAR_CONFIG } from './termUtils';
 
-const KEYS = {
-  USER: 'teacher_app_user',
-  CLASSES: 'teacher_app_classes',
-  STUDENTS: 'teacher_app_students',
-  PLUS_MINUS: 'teacher_app_plus_minus',
-  QUIZZES: 'teacher_app_quizzes',
-  HOMEWORKS: 'teacher_app_homeworks',
-  HW_RECORDS: 'teacher_app_hw_records',
-  NOTEBOOKS: 'teacher_app_notebooks',
-  WEIGHTS: 'teacher_app_weights',
-  NOTIFICATIONS: 'teacher_app_notifications',
-  FEEDBACKS: 'teacher_app_feedbacks',
+export const DEFAULT_LUCKY_DRAW_SETTINGS: LuckyDrawSettings = {
+  soundEnabled: true,
+  autoExcludeWinner: false,
+  spinDurationSeconds: 5,
+  nameFormat: 'full',
+  showStudentNumber: true,
 };
+
+export const DEMO_USER: User = {
+  id: 'usr-demo-teacher',
+  name: 'Demo Öğretmen',
+  email: 'demo.ogretmen@okul.k12.tr',
+  role: 'teacher',
+  authMethod: 'email',
+  subject: 'Matematik & Fen Bilimleri',
+  schoolName: 'Atatürk Ortaokulu',
+  isLoggedIn: true,
+  luckyDrawSettings: DEFAULT_LUCKY_DRAW_SETTINGS,
+};
+
+const GLOBAL_KEYS = {
+  CURRENT_USER: 'teacher_app_current_user',
+};
+
+function getUserKey(userId: string | undefined, dataKey: string): string {
+  const safeUserId = (userId || 'usr-demo-teacher').replace(/[^a-zA-Z0-9_-]/g, '_');
+  return `teacher_app_u_${safeUserId}_${dataKey}`;
+}
 
 function getItem<T>(key: string, fallback: T): T {
   try {
@@ -42,47 +60,107 @@ function setItem<T>(key: string, value: T): void {
 }
 
 export const Storage = {
-  getUser: (): User => getItem(KEYS.USER, {
-    id: 'usr-1',
-    name: 'Mert Yılmaz',
-    email: 'mert.ogretmen@okul.k12.tr',
-    role: 'teacher',
-    authMethod: 'email',
-    subject: 'Matematik & Fen',
-  }),
-  setUser: (user: User) => setItem(KEYS.USER, user),
+  getUser: (): User => getItem(GLOBAL_KEYS.CURRENT_USER, DEMO_USER),
+  setUser: (user: User) => setItem(GLOBAL_KEYS.CURRENT_USER, user),
 
-  getClasses: (): ClassRoom[] => getItem(KEYS.CLASSES, INITIAL_CLASSES),
-  setClasses: (data: ClassRoom[]) => setItem(KEYS.CLASSES, data),
+  getLuckyDrawSettings: (userId?: string): LuckyDrawSettings => 
+    getItem(getUserKey(userId, 'lucky_draw_settings'), DEFAULT_LUCKY_DRAW_SETTINGS),
+  setLuckyDrawSettings: (userId: string | undefined, settings: LuckyDrawSettings) => 
+    setItem(getUserKey(userId, 'lucky_draw_settings'), settings),
 
-  getStudents: (): Student[] => getItem(KEYS.STUDENTS, INITIAL_STUDENTS),
-  setStudents: (data: Student[]) => setItem(KEYS.STUDENTS, data),
+  getClasses: (userId?: string): ClassRoom[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'classes'), isDemo ? INITIAL_CLASSES : []);
+  },
+  setClasses: (userId: string | undefined, data: ClassRoom[]) => 
+    setItem(getUserKey(userId, 'classes'), data),
 
-  getPlusMinusLogs: (): PerformanceLog[] => getItem(KEYS.PLUS_MINUS, INITIAL_PLUS_MINUS_LOGS),
-  setPlusMinusLogs: (data: PerformanceLog[]) => setItem(KEYS.PLUS_MINUS, data),
+  getStudents: (userId?: string): Student[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'students'), isDemo ? INITIAL_STUDENTS : []);
+  },
+  setStudents: (userId: string | undefined, data: Student[]) => 
+    setItem(getUserKey(userId, 'students'), data),
 
-  getQuizzes: (): QuizScore[] => getItem(KEYS.QUIZZES, INITIAL_QUIZZES),
-  setQuizzes: (data: QuizScore[]) => setItem(KEYS.QUIZZES, data),
+  getPlusMinusLogs: (userId?: string): PerformanceLog[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'plus_minus'), isDemo ? INITIAL_PLUS_MINUS_LOGS : []);
+  },
+  setPlusMinusLogs: (userId: string | undefined, data: PerformanceLog[]) => 
+    setItem(getUserKey(userId, 'plus_minus'), data),
 
-  getHomeworks: (): Homework[] => getItem(KEYS.HOMEWORKS, INITIAL_HOMEWORKS),
-  setHomeworks: (data: Homework[]) => setItem(KEYS.HOMEWORKS, data),
+  getQuizDefinitions: (userId?: string): Quiz[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'quiz_defs'), isDemo ? INITIAL_QUIZ_DEFINITIONS : []);
+  },
+  setQuizDefinitions: (userId: string | undefined, data: Quiz[]) => 
+    setItem(getUserKey(userId, 'quiz_defs'), data),
 
-  getHomeworkRecords: (): HomeworkRecord[] => getItem(KEYS.HW_RECORDS, INITIAL_HOMEWORK_RECORDS),
-  setHomeworkRecords: (data: HomeworkRecord[]) => setItem(KEYS.HW_RECORDS, data),
+  getQuizzes: (userId?: string): QuizScore[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'quizzes'), isDemo ? INITIAL_QUIZZES : []);
+  },
+  setQuizzes: (userId: string | undefined, data: QuizScore[]) => 
+    setItem(getUserKey(userId, 'quizzes'), data),
 
-  getNotebookControls: (): NotebookControl[] => getItem(KEYS.NOTEBOOKS, INITIAL_NOTEBOOK_CONTROLS),
-  setNotebookControls: (data: NotebookControl[]) => setItem(KEYS.NOTEBOOKS, data),
+  getHomeworks: (userId?: string): Homework[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'homeworks'), isDemo ? INITIAL_HOMEWORKS : []);
+  },
+  setHomeworks: (userId: string | undefined, data: Homework[]) => 
+    setItem(getUserKey(userId, 'homeworks'), data),
 
-  getWeights: (): WeightSettings => getItem(KEYS.WEIGHTS, INITIAL_WEIGHT_SETTINGS),
-  setWeights: (data: WeightSettings) => setItem(KEYS.WEIGHTS, data),
+  getHomeworkRecords: (userId?: string): HomeworkRecord[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'hw_records'), isDemo ? INITIAL_HOMEWORK_RECORDS : []);
+  },
+  setHomeworkRecords: (userId: string | undefined, data: HomeworkRecord[]) => 
+    setItem(getUserKey(userId, 'hw_records'), data),
 
-  getNotifications: (): NotificationSetting[] => getItem(KEYS.NOTIFICATIONS, INITIAL_NOTIFICATION_SETTINGS),
-  setNotifications: (data: NotificationSetting[]) => setItem(KEYS.NOTIFICATIONS, data),
+  getNotebookControls: (userId?: string): NotebookControl[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'notebooks'), isDemo ? INITIAL_NOTEBOOK_CONTROLS : []);
+  },
+  setNotebookControls: (userId: string | undefined, data: NotebookControl[]) => 
+    setItem(getUserKey(userId, 'notebooks'), data),
 
-  getFeedbacks: (): ParentFeedbackLog[] => getItem(KEYS.FEEDBACKS, INITIAL_FEEDBACK_LOGS),
-  setFeedbacks: (data: ParentFeedbackLog[]) => setItem(KEYS.FEEDBACKS, data),
+  getWeights: (userId?: string): WeightSettings => 
+    getItem(getUserKey(userId, 'weights'), INITIAL_WEIGHT_SETTINGS),
+  setWeights: (userId: string | undefined, data: WeightSettings) => 
+    setItem(getUserKey(userId, 'weights'), data),
+
+  getNotifications: (userId?: string): NotificationSetting[] => 
+    getItem(getUserKey(userId, 'notifications'), INITIAL_NOTIFICATION_SETTINGS),
+  setNotifications: (userId: string | undefined, data: NotificationSetting[]) => 
+    setItem(getUserKey(userId, 'notifications'), data),
+
+  getFeedbacks: (userId?: string): ParentFeedbackLog[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'feedbacks'), isDemo ? INITIAL_FEEDBACK_LOGS : []);
+  },
+  setFeedbacks: (userId: string | undefined, data: ParentFeedbackLog[]) => 
+    setItem(getUserKey(userId, 'feedbacks'), data),
+
+  getScheduleConfig: (userId?: string): ScheduleConfig => 
+    getItem(getUserKey(userId, 'schedule_config'), DEFAULT_SCHEDULE_CONFIG),
+  setScheduleConfig: (userId: string | undefined, config: ScheduleConfig) => 
+    setItem(getUserKey(userId, 'schedule_config'), config),
+
+  getScheduleLessons: (userId?: string): ScheduleLesson[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'schedule_lessons'), isDemo ? INITIAL_SCHEDULE_LESSONS : []);
+  },
+  setScheduleLessons: (userId: string | undefined, lessons: ScheduleLesson[]) => 
+    setItem(getUserKey(userId, 'schedule_lessons'), lessons),
+
+  getAcademicYearConfig: (userId?: string): AcademicYearConfig =>
+    getItem(getUserKey(userId, 'academic_year_config'), DEFAULT_ACADEMIC_YEAR_CONFIG),
+  setAcademicYearConfig: (userId: string | undefined, config: AcademicYearConfig) =>
+    setItem(getUserKey(userId, 'academic_year_config'), config),
 
   resetToDefaults: () => {
     localStorage.clear();
   }
 };
+
+
