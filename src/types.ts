@@ -136,12 +136,15 @@ export interface NotebookControl {
   note?: string;
 }
 
+export type RoundingMode = 'none' | 'ceil5' | 'ceil10';
+
 export interface WeightSettings {
   classId: string;
   quizWeight: number;      // default 30%
   plusMinusWeight: number; // default 25%
   homeworkWeight: number;  // default 25%
   notebookWeight: number;  // default 20%
+  roundingMode?: RoundingMode; // 'none' | 'ceil5' | 'ceil10'
 }
 
 export interface NotificationSetting {

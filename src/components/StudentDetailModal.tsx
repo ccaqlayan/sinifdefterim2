@@ -103,14 +103,16 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         {/* Modal Body */}
         <div className="p-4 overflow-y-auto space-y-3.5 flex-1">
           {/* Overall Score Header Banner */}
-          <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 text-white rounded-2xl p-3.5 text-center shadow-xs flex items-center justify-between">
+          <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-indigo-900 text-white rounded-2xl p-4 text-center shadow-md flex items-center justify-between border border-indigo-500/30">
             <div className="text-left">
               <p className="text-[10px] text-indigo-200 font-black uppercase tracking-wider">Genel Dönem Başarı Notu</p>
-              <p className="text-xs text-indigo-100 font-bold mt-0.5">{score.letterGrade}</p>
+              <span className="inline-block bg-amber-400 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-lg mt-1 shadow-xs">
+                {score.letterGrade}
+              </span>
             </div>
-            <div className="text-right">
-              <span className="text-2xl font-black">{score.finalScore}</span>
-              <span className="text-xs text-indigo-200 font-medium"> / 100</span>
+            <div className="text-right flex items-baseline gap-1 bg-white/10 border border-white/20 px-3.5 py-1.5 rounded-2xl">
+              <span className="text-3xl sm:text-4xl font-black text-white">{score.finalScore ?? '-'}</span>
+              <span className="text-xs text-indigo-200 font-bold">/100</span>
             </div>
           </div>
 

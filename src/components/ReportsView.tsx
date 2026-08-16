@@ -7,6 +7,7 @@ import {
   HomeworkRecord,
   NotebookControl,
   WeightSettings,
+  RoundingMode,
   ClassRoom,
   OverallTermScore,
   HomeworkStatus,
@@ -46,6 +47,7 @@ import {
   Layers,
   Settings,
   Filter,
+  Pencil,
 } from 'lucide-react';
 
 interface ReportsViewProps {
@@ -102,7 +104,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // Sort by final score descending
   studentScores.sort((a, b) => (b.finalScore ?? -1) - (a.finalScore ?? -1));
 
-  const handleWeightChange = (key: keyof WeightSettings, val: number) => {
+  const handleWeightChange = (key: keyof WeightSettings, val: number | RoundingMode) => {
     const updated = { ...weights, [key]: val };
     onUpdateWeights(updated);
   };
@@ -122,189 +124,265 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     : null;
 
   return (
-    <div className="space-y-4 pb-24 animate-in fade-in duration-200">
+    <div className="space-y-3.5 sm:space-y-4 pb-24 animate-in fade-in duration-200">
       {/* Top Banner & Export Action */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 rounded-2xl shadow-md space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600/60 border border-indigo-400/30 text-white flex items-center justify-center font-black shadow-xs shrink-0">
-              <TrendingUp className="w-5 h-5 text-indigo-200" />
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3.5 sm:p-4 rounded-2xl shadow-md space-y-3 relative">
+        <div className="flex items-start sm:items-center justify-between gap-2 pr-10 sm:pr-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-indigo-600/60 border border-indigo-400/30 text-white flex items-center justify-center font-black shadow-xs shrink-0">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-200" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-sm font-extrabold text-white">Dönem Sonu Performans Raporu</h3>
-                <span className="text-[10px] font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="text-xs sm:text-sm font-extrabold text-white truncate">Dönem Sonu Performans Raporu</h3>
+                <span className="text-[9px] sm:text-[10px] font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full shrink-0">
                   {currentTermLabel}
                 </span>
               </div>
-              <p className="text-xs text-indigo-200">
+              <p className="text-[10px] sm:text-xs text-indigo-200 truncate">
                 {currentClass.name} - {currentClass.subject} ({currentTermDates})
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {onOpenAcademicSettings && (
-              <button
-                onClick={onOpenAcademicSettings}
-                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Dönem Başlangıç ve Bitiş Tarihlerini Yapılandır"
-              >
-                <Calendar className="w-3.5 h-3.5 text-amber-300" /> Dönem Ayarları
-              </button>
-            )}
-
+          <div className="absolute top-3 right-3 sm:relative sm:top-auto sm:right-auto shrink-0">
             <button
               onClick={handleExportExcel}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="p-2 sm:px-3.5 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Excel Raporu İndir"
             >
-              <Download className="w-4 h-4" /> Excel Dışa Aktar
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Excel Dışa Aktar</span>
             </button>
           </div>
         </div>
 
         {/* Term Selection Segmented Control */}
-        <div className="bg-slate-950/70 p-1.5 rounded-xl border border-white/10 flex flex-wrap sm:flex-nowrap gap-1">
+        <div className="bg-slate-950/70 p-1 rounded-xl border border-white/10 flex gap-1">
           <button
             onClick={() => setSelectedTerm('term1')}
-            className={`flex-1 min-w-[120px] py-2 px-3 rounded-lg text-xs font-black transition-all flex flex-col items-center justify-center cursor-pointer ${
+            className={`flex-1 py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer ${
               selectedTerm === 'term1'
                 ? 'bg-indigo-600 text-white shadow-xs border border-indigo-400'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <span>{academicYearConfig.term1.name}</span>
-            <span className="text-[9px] font-normal opacity-80">
-              {getTermDateRangeString('term1', academicYearConfig)}
-            </span>
+            <span>1. Dönem</span>
           </button>
 
           <button
             onClick={() => setSelectedTerm('term2')}
-            className={`flex-1 min-w-[120px] py-2 px-3 rounded-lg text-xs font-black transition-all flex flex-col items-center justify-center cursor-pointer ${
+            className={`flex-1 py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer ${
               selectedTerm === 'term2'
                 ? 'bg-indigo-600 text-white shadow-xs border border-indigo-400'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <span>{academicYearConfig.term2.name}</span>
-            <span className="text-[9px] font-normal opacity-80">
-              {getTermDateRangeString('term2', academicYearConfig)}
-            </span>
+            <span>2. Dönem</span>
           </button>
 
           <button
             onClick={() => setSelectedTerm('all')}
-            className={`flex-1 min-w-[120px] py-2 px-3 rounded-lg text-xs font-black transition-all flex flex-col items-center justify-center cursor-pointer ${
+            className={`flex-1 py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer ${
               selectedTerm === 'all'
                 ? 'bg-indigo-600 text-white shadow-xs border border-indigo-400'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <span>Tüm Eğitim Yılı</span>
-            <span className="text-[9px] font-normal opacity-80">{academicYearConfig.academicYear} (Kümülatif)</span>
+            <span>Tüm Yıl</span>
           </button>
         </div>
 
         {/* Weights Summary Bar */}
-        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10 space-y-2">
+        <div className="bg-white/10 backdrop-blur-md rounded-xl p-2.5 sm:p-3 border border-white/10 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-indigo-200 flex items-center gap-1">
+            <span className="font-bold text-indigo-200 flex items-center gap-1 text-[11px] sm:text-xs">
               <Sliders className="w-3.5 h-3.5" /> Ağırlık Dağılımı:
             </span>
             <button
               onClick={() => setShowWeightSettings(!showWeightSettings)}
-              className="text-[11px] font-black text-amber-300 underline hover:text-amber-200 cursor-pointer"
+              className="p-1 px-2 rounded-lg bg-white/10 hover:bg-white/20 text-amber-300 hover:text-amber-200 transition-all cursor-pointer flex items-center gap-1 border border-white/20 text-xs font-bold"
+              title="Etki Yüzdelerini ve Yuvarlamayı Düzenle"
             >
-              {showWeightSettings ? 'Kapat' : 'Etki Yüzdelerini Değiştir (%' + totalWeight + ')'}
+              <Pencil className="w-3.5 h-3.5" />
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${showWeightSettings ? 'rotate-180' : ''}`} />
             </button>
           </div>
 
-          <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-800">
-            <div style={{ width: `${weights.quizWeight}%` }} className="bg-indigo-500" title="Quiz %" />
-            <div style={{ width: `${weights.plusMinusWeight}%` }} className="bg-emerald-500" title="Artı/Eksi %" />
-            <div style={{ width: `${weights.homeworkWeight}%` }} className="bg-sky-500" title="Ödev %" />
-            <div style={{ width: `${weights.notebookWeight}%` }} className="bg-amber-500" title="Defter %" />
-          </div>
-
-          <div className="grid grid-cols-4 text-[10px] text-center font-bold text-indigo-200">
-            <span>Quiz: %{weights.quizWeight}</span>
-            <span>Katılım: %{weights.plusMinusWeight}</span>
-            <span>Ödev: %{weights.homeworkWeight}</span>
-            <span>Defter: %{weights.notebookWeight}</span>
+          <div className="flex h-6 sm:h-7 rounded-xl overflow-hidden bg-slate-900/80 p-0.5 border border-white/10 shadow-inner">
+            {weights.quizWeight > 0 && (
+              <div
+                style={{ width: `${weights.quizWeight}%` }}
+                className="bg-gradient-to-r from-indigo-600 to-indigo-500 flex items-center justify-center text-[10px] sm:text-xs font-black text-white px-1 truncate transition-all duration-300 border-r border-indigo-700/40"
+                title={`Quiz / Sınav: %${weights.quizWeight}`}
+              >
+                <span className="truncate">{weights.quizWeight >= 12 ? `Quiz %${weights.quizWeight}` : `%${weights.quizWeight}`}</span>
+              </div>
+            )}
+            {weights.plusMinusWeight > 0 && (
+              <div
+                style={{ width: `${weights.plusMinusWeight}%` }}
+                className="bg-gradient-to-r from-emerald-600 to-emerald-500 flex items-center justify-center text-[10px] sm:text-xs font-black text-white px-1 truncate transition-all duration-300 border-r border-emerald-700/40"
+                title={`Katılım / Artı-Eksi: %${weights.plusMinusWeight}`}
+              >
+                <span className="truncate">{weights.plusMinusWeight >= 12 ? `Katılım %${weights.plusMinusWeight}` : `%${weights.plusMinusWeight}`}</span>
+              </div>
+            )}
+            {weights.homeworkWeight > 0 && (
+              <div
+                style={{ width: `${weights.homeworkWeight}%` }}
+                className="bg-gradient-to-r from-sky-600 to-sky-500 flex items-center justify-center text-[10px] sm:text-xs font-black text-white px-1 truncate transition-all duration-300 border-r border-sky-700/40"
+                title={`Ödev Takip: %${weights.homeworkWeight}`}
+              >
+                <span className="truncate">{weights.homeworkWeight >= 12 ? `Ödev %${weights.homeworkWeight}` : `%${weights.homeworkWeight}`}</span>
+              </div>
+            )}
+            {weights.notebookWeight > 0 && (
+              <div
+                style={{ width: `${weights.notebookWeight}%` }}
+                className="bg-gradient-to-r from-amber-600 to-amber-500 flex items-center justify-center text-[10px] sm:text-xs font-black text-white px-1 truncate transition-all duration-300"
+                title={`Defter Kontrol: %${weights.notebookWeight}`}
+              >
+                <span className="truncate">{weights.notebookWeight >= 12 ? `Defter %${weights.notebookWeight}` : `%${weights.notebookWeight}`}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Customizable Weight Settings Panel */}
-      {showWeightSettings && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-3 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Ağırlıklı Etki Yüzdelerini Ayarla
-            </h4>
-            {totalWeight !== 100 && (
-              <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                Toplam Yüzde %100 olmalı! (Mevcut: %{totalWeight})
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 text-xs font-bold text-slate-800">
-            <div>
-              <label className="block text-slate-600 mb-1">Quiz / Sınav Etkisi: %{weights.quizWeight}</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={weights.quizWeight}
-                onChange={(e) => handleWeightChange('quizWeight', Number(e.target.value))}
-                className="w-full accent-indigo-600"
-              />
+      {/* Customizable Weight Settings Panel with Smooth Accordion Expand */}
+      <div
+        className={`grid transition-all duration-300 ease-in-out ${
+          showWeightSettings
+            ? 'grid-rows-[1fr] opacity-100'
+            : 'grid-rows-[0fr] opacity-0 overflow-hidden'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-4 shadow-xs">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-indigo-600" /> Ağırlıklı Etki Yüzdeleri ve Yuvarlama Ayarları
+              </h4>
+              {totalWeight !== 100 && (
+                <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                  Toplam Yüzde %100 olmalı! (Mevcut: %{totalWeight})
+                </span>
+              )}
             </div>
 
-            <div>
-              <label className="block text-slate-600 mb-1">Artı / Eksi Katılım Etkisi: %{weights.plusMinusWeight}</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={weights.plusMinusWeight}
-                onChange={(e) => handleWeightChange('plusMinusWeight', Number(e.target.value))}
-                className="w-full accent-emerald-600"
-              />
+            <div className="grid grid-cols-2 gap-3 text-xs font-bold text-slate-800">
+              <div>
+                <label className="block text-slate-600 mb-1">Quiz / Sınav Etkisi: %{weights.quizWeight}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={weights.quizWeight}
+                  onChange={(e) => handleWeightChange('quizWeight', Number(e.target.value))}
+                  className="w-full accent-indigo-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 mb-1">Artı / Eksi Katılım Etkisi: %{weights.plusMinusWeight}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={weights.plusMinusWeight}
+                  onChange={(e) => handleWeightChange('plusMinusWeight', Number(e.target.value))}
+                  className="w-full accent-emerald-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 mb-1">Ödev Takip Etkisi: %{weights.homeworkWeight}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={weights.homeworkWeight}
+                  onChange={(e) => handleWeightChange('homeworkWeight', Number(e.target.value))}
+                  className="w-full accent-sky-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 mb-1">Defter Kontrol Etkisi: %{weights.notebookWeight}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={weights.notebookWeight}
+                  onChange={(e) => handleWeightChange('notebookWeight', Number(e.target.value))}
+                  className="w-full accent-amber-600"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-slate-600 mb-1">Ödev Takip Etkisi: %{weights.homeworkWeight}</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={weights.homeworkWeight}
-                onChange={(e) => handleWeightChange('homeworkWeight', Number(e.target.value))}
-                className="w-full accent-sky-600"
-              />
-            </div>
+            {/* Rounding Mode Options */}
+            <div className="pt-3 border-t border-indigo-200/80 space-y-2">
+              <label className="text-xs font-black text-indigo-950 uppercase tracking-wider block">
+                Puan Yuvarlama Yöntemi (Her Zaman Üste Yuvarlar):
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleWeightChange('roundingMode', 'none')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                    (!weights.roundingMode || weights.roundingMode === 'none')
+                      ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
+                      : 'bg-white text-slate-700 border-indigo-200/60 hover:bg-white/80'
+                  }`}
+                >
+                  <div>
+                    <div className="text-xs font-black">Yuvarlama Yok</div>
+                    <div className="text-[10px] opacity-80 font-normal">Tam / Ondalıklı (Örn: 82.4)</div>
+                  </div>
+                  {(!weights.roundingMode || weights.roundingMode === 'none') && <Check className="w-4 h-4 shrink-0" />}
+                </button>
 
-            <div>
-              <label className="block text-slate-600 mb-1">Defter Kontrol Etkisi: %{weights.notebookWeight}</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={weights.notebookWeight}
-                onChange={(e) => handleWeightChange('notebookWeight', Number(e.target.value))}
-                className="w-full accent-amber-600"
-              />
+                <button
+                  type="button"
+                  onClick={() => handleWeightChange('roundingMode', 'ceil5')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                    weights.roundingMode === 'ceil5'
+                      ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
+                      : 'bg-white text-slate-700 border-indigo-200/60 hover:bg-white/80'
+                  }`}
+                >
+                  <div>
+                    <div className="text-xs font-black">5'in Katına Üste Yuvarla</div>
+                    <div className="text-[10px] opacity-80 font-normal">81 ➔ 85 | 86 ➔ 90</div>
+                  </div>
+                  {weights.roundingMode === 'ceil5' && <Check className="w-4 h-4 shrink-0" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleWeightChange('roundingMode', 'ceil10')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                    weights.roundingMode === 'ceil10'
+                      ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
+                      : 'bg-white text-slate-700 border-indigo-200/60 hover:bg-white/80'
+                  }`}
+                >
+                  <div>
+                    <div className="text-xs font-black">10'un Katına Üste Yuvarla</div>
+                    <div className="text-[10px] opacity-80 font-normal">81 ➔ 90 | 85 ➔ 90</div>
+                  </div>
+                  {weights.roundingMode === 'ceil10' && <Check className="w-4 h-4 shrink-0" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Student Term Performance Table Cards */}
       <div className="space-y-2.5">
@@ -312,7 +390,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
             <Award className="w-4 h-4 text-indigo-600" /> {currentTermLabel} Öğrenci Not Listesi ({studentScores.length})
           </h4>
-          <span className="text-[11px] text-slate-500 font-medium">
+          <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
             Kayıtlar sadece bu dönemin tarihlerine göre filtrelenmiştir
           </span>
         </div>
@@ -360,7 +438,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </div>
 
               {/* Progress Bars breakdown */}
-              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-[10px]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 text-[10px]">
                 <div>
                   <div className="flex justify-between font-bold text-slate-500">
                     <span>Quiz</span>
@@ -415,7 +493,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[90vh]">
             {/* Modal Top Header */}
-            <div className="bg-gradient-to-r from-indigo-700 to-slate-900 p-4 text-white flex items-center justify-between shrink-0">
+            <div className="bg-gradient-to-r from-indigo-800 via-indigo-900 to-slate-900 p-4 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <img
                   src={
@@ -425,19 +503,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     )}&background=6366f1&color=fff`
                   }
                   alt={activeStudentScore.studentName}
-                  className="w-11 h-11 rounded-2xl object-cover border-2 border-white/30"
+                  className="w-12 h-12 rounded-2xl object-cover border-2 border-white/30 shrink-0"
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-extrabold text-white">
+                    <h3 className="text-base font-extrabold text-white">
                       #{activeStudentScore.studentNumber} {activeStudentScore.studentName}
                     </h3>
                     <span className="text-[10px] font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-md">
                       {currentTermLabel}
                     </span>
                   </div>
-                  <p className="text-xs text-indigo-200">
-                    Genel Performans Puanı: {activeStudentScore.finalScore !== null ? `${activeStudentScore.finalScore}/100` : 'Veri Yok'} ({activeStudentScore.letterGrade})
+                  <p className="text-xs text-indigo-200 font-medium">
+                    Öğrenci Detaylı Performans Raporu
                   </p>
                 </div>
               </div>
@@ -448,6 +526,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Prominent Large Score Display Banner */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-4 border-b border-indigo-800/80 flex items-center justify-between gap-3 text-white shrink-0">
+              <div>
+                <span className="text-[10px] font-black text-indigo-300 uppercase tracking-wider block mb-0.5">
+                  Dönem Sonu Başarı Notu
+                </span>
+                <span className="inline-block bg-amber-400 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-lg shadow-xs">
+                  {activeStudentScore.letterGrade}
+                </span>
+              </div>
+              <div className="text-right flex items-baseline gap-1 bg-white/10 border border-white/20 px-4 py-2 rounded-2xl shadow-inner">
+                <span className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                  {activeStudentScore.finalScore !== null ? activeStudentScore.finalScore : '-'}
+                </span>
+                <span className="text-sm font-bold text-indigo-200">/100</span>
+              </div>
             </div>
 
             {/* Sub-tab Switchers for Student Detail */}

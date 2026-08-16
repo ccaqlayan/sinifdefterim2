@@ -76,8 +76,19 @@ export function calculateStudentOverallScore(
     }
 
     if (activeWeightsSum > 0) {
-      const rawFinal = totalWeightedScore / activeWeightsSum;
-      finalScore = Math.round(rawFinal * 10) / 10;
+      let rawFinal = totalWeightedScore / activeWeightsSum;
+
+      if (weights.roundingMode === 'ceil5') {
+        // Round UP to nearest multiple of 5 (e.g. 81 -> 85, 86 -> 90)
+        rawFinal = rawFinal > 0 ? Math.ceil(rawFinal / 5) * 5 : 0;
+      } else if (weights.roundingMode === 'ceil10') {
+        // Round UP to nearest multiple of 10 (e.g. 81 -> 90, 85 -> 90)
+        rawFinal = rawFinal > 0 ? Math.ceil(rawFinal / 10) * 10 : 0;
+      } else {
+        rawFinal = Math.round(rawFinal * 10) / 10;
+      }
+
+      finalScore = Math.min(100, rawFinal);
 
       if (finalScore < 45) letterGrade = 'Zayıf (1)';
       else if (finalScore < 55) letterGrade = 'Geçer (2)';

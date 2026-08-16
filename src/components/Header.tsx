@@ -49,32 +49,32 @@ export const Header: React.FC<HeaderProps> = ({
     : '2. Dönem';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs px-3 sm:px-4 py-2.5">
-      <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs px-2.5 sm:px-4 py-2">
+      <div className="max-w-5xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
         {/* Logo & Brand Title */}
-        <div className="flex items-center gap-2.5">
-          <AppLogoIcon className="w-9 h-9 drop-shadow-2xs" />
-          <div className="leading-tight">
-            <h1 className="text-sm font-black text-indigo-950 tracking-tight flex items-center gap-1.5">
+        <div className="flex items-center gap-2 shrink min-w-0">
+          <AppLogoIcon className="w-8 h-8 sm:w-9 sm:h-9 drop-shadow-2xs shrink-0" />
+          <div className="leading-tight min-w-0">
+            <h1 className="text-xs sm:text-sm font-black text-indigo-950 tracking-tight flex items-center gap-1 truncate">
               Sınıf Defterim
             </h1>
-            <p className="text-[10px] text-indigo-700 font-extrabold uppercase tracking-wide truncate">
+            <p className="text-[9px] sm:text-[10px] text-indigo-700 font-extrabold uppercase tracking-wide truncate max-w-[100px] xs:max-w-[140px] sm:max-w-none">
               Yıldız Anadolu Lisesi
             </p>
           </div>
         </div>
 
         {/* Right Side Actions & Class / Term Selector */}
-        <div className="flex items-center gap-2">
-          {/* Academic Term Quick Indicator & Settings Launcher */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Academic Term Quick Indicator & Settings Launcher (Hidden on Mobile) */}
           {(user.role === 'teacher' || user.role === 'admin') && academicYearConfig && onOpenAcademicSettings && (
             <button
               onClick={onOpenAcademicSettings}
-              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 border border-amber-200/90 text-amber-950 text-xs font-black transition-all shadow-2xs cursor-pointer shrink-0"
+              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 border border-amber-200/90 text-amber-950 text-xs font-black transition-all shadow-2xs cursor-pointer shrink-0"
               title="Dönem ve Eğitim Yılı Tarih Ayarlarını Aç"
             >
               <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span className="hidden sm:inline">{academicYearConfig.academicYear}</span>
+              <span>{academicYearConfig.academicYear}</span>
               <span className="bg-amber-400 text-slate-950 text-[10px] px-1.5 py-0.2 rounded font-extrabold">
                 {termLabel}
               </span>
@@ -83,11 +83,11 @@ export const Header: React.FC<HeaderProps> = ({
 
           {(user.role === 'teacher' || user.role === 'admin') && (
             classes.length > 0 ? (
-              <div className="relative">
+              <div className="relative max-w-[125px] xs:max-w-[155px] sm:max-w-none">
                 <select
                   value={selectedClassId}
                   onChange={(e) => onSelectClass(e.target.value)}
-                  className="bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200 text-indigo-950 font-bold text-xs py-1.5 pl-2.5 pr-7 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs transition-all"
+                  className="w-full bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200 text-indigo-950 font-bold text-xs py-1.5 pl-2 pr-6 sm:pl-2.5 sm:pr-7 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs transition-all truncate"
                 >
                   {classes.map((cls) => (
                     <option key={cls.id} value={cls.id}>
@@ -95,12 +95,12 @@ export const Header: React.FC<HeaderProps> = ({
                     </option>
                   ))}
                 </select>
-                <BookOpen className="w-3.5 h-3.5 text-indigo-600 absolute right-2 top-2.5 pointer-events-none" />
+                <BookOpen className="w-3.5 h-3.5 text-indigo-600 absolute right-1.5 sm:right-2 top-2.5 pointer-events-none" />
               </div>
             ) : onOpenAddClass ? (
               <button
                 onClick={onOpenAddClass}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs py-1.5 px-3 rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs py-1.5 px-2.5 sm:px-3 rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer shrink-0"
                 title="Hemen yeni sınıf ekleyin"
               >
                 <span>+ Sınıf Ekle</span>
@@ -112,7 +112,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-profile-btn"
             onClick={onOpenAuth}
-            className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-xl bg-slate-50 hover:bg-indigo-50/80 border border-slate-200 hover:border-indigo-300 text-slate-800 transition-all shadow-2xs group cursor-pointer shrink-0"
+            className="flex items-center gap-2 p-1 sm:pl-1.5 sm:pr-2.5 rounded-xl bg-slate-50 hover:bg-indigo-50/80 border border-slate-200 hover:border-indigo-300 text-slate-800 transition-all shadow-2xs group cursor-pointer shrink-0"
             title="Öğretmen Profili & Hesap Yönetimi"
           >
             {user.photoUrl ? (
