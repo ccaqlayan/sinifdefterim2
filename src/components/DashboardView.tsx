@@ -27,6 +27,7 @@ import {
   TrendingUp,
   Dices,
   Calendar,
+  CalendarRange,
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -257,6 +258,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div>
         <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2">Hızlı İşlem Paneli</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            onClick={() => onNavigateTab('weekly-summary')}
+            className="p-3.5 bg-linear-to-br from-indigo-50/90 via-purple-50/70 to-pink-50/40 hover:from-indigo-100 hover:to-purple-100 border border-indigo-200/90 rounded-2xl text-left transition-all shadow-2xs group flex flex-col justify-between relative overflow-hidden"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold shadow-xs shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                <CalendarRange className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-black text-indigo-700 bg-white px-2 py-0.5 rounded-full border border-indigo-200 flex items-center gap-1 shadow-2xs">
+                <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+                Özet & Analiz
+              </span>
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-indigo-900 flex items-center gap-1">
+                Haftalık Özet
+              </h4>
+              <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2">
+                Haftanın yıldızları, ödev eksikleri ve işlenen ders saati analizi
+              </p>
+            </div>
+          </button>
+
           <button
             onClick={() => onNavigateTab('quick-score')}
             className="p-3.5 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 rounded-2xl text-left transition-all shadow-2xs group flex flex-col justify-between"

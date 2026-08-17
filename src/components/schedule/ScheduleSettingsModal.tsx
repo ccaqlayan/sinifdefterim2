@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScheduleConfig, ScheduleDay, PeriodTime } from '../../types';
 import { ALL_DAYS, DAY_FULL_NAMES, generatePeriodTimes } from '../../utils/scheduleUtils';
-import { X, Check, Clock, Calendar, RefreshCw, Sliders, AlertCircle, Sparkles } from 'lucide-react';
+import { X, Check, Clock, Calendar, RefreshCw, Sliders, AlertCircle, Sparkles, Layout } from 'lucide-react';
 
 interface ScheduleSettingsModalProps {
   isOpen: boolean;
@@ -16,6 +16,7 @@ export const ScheduleSettingsModal: React.FC<ScheduleSettingsModalProps> = ({
   config,
   onSaveConfig,
 }) => {
+  const [defaultView, setDefaultView] = useState<'daily' | 'grid' | 'list'>(config.defaultView || 'daily');
   const [periodsPerDay, setPeriodsPerDay] = useState<number>(config.periodsPerDay || 10);
   const [lessonDurationMinutes, setLessonDurationMinutes] = useState<number>(config.lessonDurationMinutes || 40);
   const [breakDurationMinutes, setBreakDurationMinutes] = useState<number>(config.breakDurationMinutes || 10);
@@ -29,6 +30,7 @@ export const ScheduleSettingsModal: React.FC<ScheduleSettingsModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setDefaultView(config.defaultView || 'daily');
       setPeriodsPerDay(config.periodsPerDay || 10);
       setLessonDurationMinutes(config.lessonDurationMinutes || 40);
       setBreakDurationMinutes(config.breakDurationMinutes || 10);
@@ -91,6 +93,7 @@ export const ScheduleSettingsModal: React.FC<ScheduleSettingsModalProps> = ({
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const updatedConfig: ScheduleConfig = {
+      defaultView,
       periodsPerDay,
       lessonDurationMinutes,
       breakDurationMinutes,
@@ -154,6 +157,26 @@ export const ScheduleSettingsModal: React.FC<ScheduleSettingsModalProps> = ({
         {/* Modal Body */}
         <form onSubmit={handleSave} className="p-5 overflow-y-auto space-y-5 flex-1 text-slate-800">
           
+          {/* Varsayılan Açılış Sekmesi */}
+          <div className="bg-indigo-50/80 p-3.5 rounded-2xl border border-indigo-200/80 space-y-1.5">
+            <label className="text-xs font-black text-indigo-950 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Layout className="w-3.5 h-3.5 text-indigo-600" />
+                Sayfa Açılış Sekmesi
+              </span>
+              <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Varsayılan Görünüm</span>
+            </label>
+            <select
+              value={defaultView}
+              onChange={(e) => setDefaultView(e.target.value as 'daily' | 'grid' | 'list')}
+              className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            >
+              <option value="daily">O Günün Akışı (Günlük Liste)</option>
+              <option value="grid">Haftalık Program (Tablo)</option>
+              <option value="list">Tüm Liste</option>
+            </select>
+          </div>
+
           {/* Main Controls Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             

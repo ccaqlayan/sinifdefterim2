@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Student, Quiz, QuizScore, Homework, HomeworkRecord, ClassRoom, HomeworkStatus } from '../types';
 import { 
   Award, BookOpen, Plus, Sparkles, Clock, Check, X, Wand2, 
-  Edit3, Trash2, AlertTriangle, CheckCircle2,
+  Edit3, Trash2, AlertTriangle, CheckCircle2, AlertCircle,
   Calendar, User, FileText, RefreshCw, RotateCcw, Flame, ShieldAlert,
   Save, BarChart2, Hash
 } from 'lucide-react';
@@ -121,6 +121,15 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
   const [deletingQuiz, setDeletingQuiz] = useState<Quiz | null>(null);
   const [deleteQuizStep, setDeleteQuizStep] = useState<1 | 2>(1);
   const [deleteQuizConfirmText, setDeleteQuizConfirmText] = useState('');
+
+  // Quiz Save Feedback Modal State
+  const [quizSaveFeedback, setQuizSaveFeedback] = useState<{
+    type: 'success' | 'warning';
+    title: string;
+    message: string;
+    savedCount: number;
+    emptyCount: number;
+  } | null>(null);
 
   // Homework State
   const classHomeworks = homeworks.filter((h) => h.classId === currentClass.id && !h.isDeleted);
@@ -243,9 +252,33 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
         date: activeQuiz.date,
       }));
 
+    if (scoresToSave.length === 0) {
+      setQuizSaveFeedback({
+        type: 'warning',
+        title: 'Not Girişi Bulunamadı',
+        message: 'Hiçbir öğrenci için quiz notu yazılmadı. Lütfen en az bir öğrencinin quiz notunu girin veya Hızlı Puan Atama butonlarını kullanın.',
+        savedCount: 0,
+        emptyCount: classStudents.length,
+      });
+      return;
+    }
+
     onBatchSaveQuizScores(scoresToSave);
-    alert(`"${activeQuiz.title}" notları başarıyla kaydedildi!`);
+    const emptyCount = classStudents.length - scoresToSave.length;
+    setQuizSaveFeedback({
+      type: 'success',
+      title: 'Quiz Notları Kaydedildi',
+      message: emptyCount > 0
+        ? `"${activeQuiz.title}" sınavı için ${scoresToSave.length} öğrencinin notu sisteme kaydedildi. (${emptyCount} not girilmeyen öğrenci atlandı.)`
+        : `Tüm sınıfın (${scoresToSave.length} öğrenci) "${activeQuiz.title}" not verisi başarıyla sisteme işlendi.`,
+      savedCount: scoresToSave.length,
+      emptyCount: emptyCount,
+    });
   };
+
+  const enteredQuizScoreCount = classStudents.filter(
+    (std) => scoresInput[std.id] !== '' && scoresInput[std.id] !== undefined && scoresInput[std.id] !== null
+  ).length;
 
   const handleSetAllScores = (targetScore: number | string) => {
     const updated: { [studentId: string]: number | string } = {};
@@ -1828,6 +1861,84 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
           </div>
         );
       })()}
+
+      {/* Floating Fixed Save Button for Quiz */}
+      {activeSubTab === 'quizzes' && activeQuiz && (
+        <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40">
+          <button
+            type="button"
+            onClick={handleSaveAllQuizScores}
+            className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white shadow-xl shadow-indigo-600/30 border-2 border-indigo-400/30 font-bold flex items-center gap-2.5 p-3.5 sm:px-5 sm:py-3.5 rounded-full sm:rounded-2xl transition-all cursor-pointer active:scale-95 hover:scale-105 group"
+            title="Quiz Notlarını Kaydet"
+          >
+            <Save className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            <span className="hidden sm:inline font-extrabold text-xs">Notları Kaydet</span>
+          </button>
+        </div>
+      )}
+
+      {/* Save Feedback Modal */}
+      {quizSaveFeedback && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-5 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black ${
+                    quizSaveFeedback.type === 'success'
+                      ? 'bg-emerald-100 text-emerald-600'
+                      : 'bg-amber-100 text-amber-600'
+                  }`}
+                >
+                  {quizSaveFeedback.type === 'success' ? (
+                    <CheckCircle2 className="w-6 h-6" />
+                  ) : (
+                    <AlertCircle className="w-6 h-6" />
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900">{quizSaveFeedback.title}</h4>
+                  <p className="text-[11px] text-slate-500 font-bold">{currentClass.name} • {activeQuiz?.title || ''}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setQuizSaveFeedback(null)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 font-medium bg-slate-50 p-3 rounded-2xl border border-slate-100 leading-relaxed">
+              {quizSaveFeedback.message}
+            </p>
+
+            {quizSaveFeedback.type === 'success' && (
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                  <span className="text-[10px] font-bold text-emerald-700 block">Kaydedilen Not</span>
+                  <span className="text-sm font-black text-emerald-900">{quizSaveFeedback.savedCount} Öğrenci</span>
+                </div>
+                <div className="p-2 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-500 block">Not Girilmeyen</span>
+                  <span className="text-sm font-black text-slate-700">{quizSaveFeedback.emptyCount} Öğrenci</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => setQuizSaveFeedback(null)}
+              className={`w-full py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all cursor-pointer text-white ${
+                quizSaveFeedback.type === 'success'
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : 'bg-amber-600 hover:bg-amber-700'
+              }`}
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

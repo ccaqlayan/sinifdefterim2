@@ -30,6 +30,7 @@ import { FeedbackView } from './components/FeedbackView';
 import { ParentPortalView } from './components/ParentPortalView';
 import { ClassAndStudentManagementView } from './components/ClassAndStudentManagementView';
 import { ScheduleView } from './components/schedule/ScheduleView';
+import { WeeklySummaryView } from './components/WeeklySummaryView';
 import { LoginPage } from './components/auth/LoginPage';
 import { NoClassGuideView } from './components/NoClassGuideView';
 
@@ -867,6 +868,26 @@ export default function App() {
                     setActiveTab('dashboard');
                   }}
                   onBackToDashboard={() => setActiveTab('dashboard')}
+                />
+              )}
+
+              {activeTab === 'weekly-summary' && (
+                <WeeklySummaryView
+                  classes={classes}
+                  selectedClassId={selectedClassId}
+                  onSelectClass={setSelectedClassId}
+                  students={students}
+                  plusMinusLogs={plusMinusLogs}
+                  quizDefinitions={quizDefinitions}
+                  quizzes={quizzes}
+                  homeworks={homeworks}
+                  homeworkRecords={homeworkRecords}
+                  notebookControls={notebookControls}
+                  scheduleConfig={scheduleConfig}
+                  scheduleLessons={scheduleLessons}
+                  academicYearConfig={academicYearConfig}
+                  onBackToDashboard={() => setActiveTab('dashboard')}
+                  onNavigateTab={setActiveTab}
                 />
               )}
             </>

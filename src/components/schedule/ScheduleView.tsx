@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScheduleConfig, ScheduleDay, ScheduleLesson, ClassRoom } from '../../types';
 import { WeeklyScheduleGrid } from './WeeklyScheduleGrid';
 import { CurrentLessonWidget } from './CurrentLessonWidget';
@@ -53,8 +53,14 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   onSelectClass,
   onBackToDashboard,
 }) => {
-  const [viewMode, setViewMode] = useState<'grid' | 'daily' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'daily' | 'list'>(config.defaultView || 'daily');
   const [selectedDay, setSelectedDay] = useState<ScheduleDay>(getTodayScheduleDay());
+
+  useEffect(() => {
+    if (config.defaultView) {
+      setViewMode(config.defaultView);
+    }
+  }, [config.defaultView]);
 
   // Modal states
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
@@ -211,18 +217,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         {/* View Toggle Tabs */}
         <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
           <button
-            onClick={() => setViewMode('grid')}
-            className={`flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              viewMode === 'grid'
-                ? 'bg-white text-indigo-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Grid className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Haftalık </span>Tablo
-          </button>
-
-          <button
             onClick={() => setViewMode('daily')}
             className={`flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               viewMode === 'daily'
@@ -232,6 +226,18 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           >
             <Clock className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Günlük </span>Akış
+          </button>
+
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              viewMode === 'grid'
+                ? 'bg-white text-indigo-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Grid className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Haftalık </span>Tablo
           </button>
 
           <button

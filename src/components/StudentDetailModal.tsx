@@ -61,11 +61,11 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const studentNotebooks = notebookControls.filter((n) => n.studentId === student.id);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Top Header */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="p-3 sm:p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <img
               src={
                 student.photoUrl ||
@@ -74,18 +74,18 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 )}&background=6366f1&color=fff`
               }
               alt={student.name}
-              className="w-12 h-12 rounded-2xl object-cover border-2 border-indigo-200 shadow-2xs"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl object-cover border-2 border-indigo-200 shadow-2xs shrink-0"
             />
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-black text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] sm:text-[11px] font-black text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">
                   #{student.number}
                 </span>
-                <h3 className="text-sm sm:text-base font-black text-slate-900">
+                <h3 className="text-xs sm:text-base font-black text-slate-900 leading-tight">
                   {student.name} {student.surname}
                 </h3>
               </div>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
+              <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
                 {currentClass.name} ({currentClass.subject}) • Veli: {student.parentName || 'Girilmedi'}
               </p>
             </div>
@@ -93,7 +93,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-bold flex items-center justify-center transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-bold flex items-center justify-center transition-all cursor-pointer shrink-0"
             title="Kapat"
           >
             ✕
@@ -101,101 +101,101 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 overflow-y-auto space-y-3.5 flex-1">
+        <div className="p-3 sm:p-4 overflow-y-auto space-y-3 flex-1">
           {/* Overall Score Header Banner */}
-          <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-indigo-900 text-white rounded-2xl p-4 text-center shadow-md flex items-center justify-between border border-indigo-500/30">
+          <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-indigo-900 text-white rounded-2xl p-2.5 sm:p-3.5 text-center shadow-md flex items-center justify-between border border-indigo-500/30">
             <div className="text-left">
-              <p className="text-[10px] text-indigo-200 font-black uppercase tracking-wider">Genel Dönem Başarı Notu</p>
-              <span className="inline-block bg-amber-400 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-lg mt-1 shadow-xs">
+              <p className="text-[9px] sm:text-[10px] text-indigo-200 font-black uppercase tracking-wider">Genel Dönem Başarı Notu</p>
+              <span className="inline-block bg-amber-400 text-slate-950 text-[11px] sm:text-xs font-black px-2 py-0.5 rounded-lg mt-0.5 shadow-xs">
                 {score.letterGrade}
               </span>
             </div>
-            <div className="text-right flex items-baseline gap-1 bg-white/10 border border-white/20 px-3.5 py-1.5 rounded-2xl">
-              <span className="text-3xl sm:text-4xl font-black text-white">{score.finalScore ?? '-'}</span>
-              <span className="text-xs text-indigo-200 font-bold">/100</span>
+            <div className="text-right flex items-baseline gap-1 bg-white/10 border border-white/20 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl sm:rounded-2xl">
+              <span className="text-2xl sm:text-3xl font-black text-white">{score.finalScore ?? '-'}</span>
+              <span className="text-[10px] sm:text-xs text-indigo-200 font-bold">/100</span>
             </div>
           </div>
 
           {/* Interactive Criteria Cards (Selectable Tabs) */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block">
+          <div className="space-y-1">
+            <label className="text-[10px] sm:text-[11px] font-black text-slate-700 uppercase tracking-wider block">
               İncelemek İstediğiniz Alanı Seçin:
             </label>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-1 sm:gap-2">
               {/* Defter Card */}
               <button
                 onClick={() => setActiveDetailTab('notebook')}
-                className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                className={`p-1.5 sm:p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   activeDetailTab === 'notebook'
-                    ? 'bg-amber-500 text-white border-amber-600 shadow-md ring-2 ring-amber-300'
+                    ? 'bg-amber-500 text-white border-amber-600 shadow-sm ring-2 ring-amber-300'
                     : 'bg-amber-50/80 text-amber-950 border-amber-200 hover:bg-amber-100'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <BookMarked className="w-4 h-4" />
-                  <span className="text-[10px] font-bold opacity-80">%{weights.notebookWeight}</span>
+                <div className="flex items-center justify-between gap-0.5">
+                  <BookMarked className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="text-[8px] sm:text-[10px] font-bold opacity-80">%{weights.notebookWeight}</span>
                 </div>
-                <div className="mt-2">
-                  <div className="text-[10px] font-extrabold uppercase opacity-90">Defter Düzeni</div>
-                  <div className="text-base font-black">%{score.notebookAverage}</div>
+                <div className="mt-1">
+                  <div className="text-[8px] sm:text-[10px] font-extrabold uppercase opacity-90 truncate" title="Defter Düzeni">Defter</div>
+                  <div className="text-[10px] sm:text-sm font-black truncate">%{score.notebookAverage}</div>
                 </div>
               </button>
 
               {/* Katılım Card */}
               <button
                 onClick={() => setActiveDetailTab('plusminus')}
-                className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                className={`p-1.5 sm:p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   activeDetailTab === 'plusminus'
-                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-300'
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-300'
                     : 'bg-emerald-50/80 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <PlusCircle className="w-4 h-4" />
-                  <span className="text-[10px] font-bold opacity-80">%{weights.plusMinusWeight}</span>
+                <div className="flex items-center justify-between gap-0.5">
+                  <PlusCircle className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="text-[8px] sm:text-[10px] font-bold opacity-80">%{weights.plusMinusWeight}</span>
                 </div>
-                <div className="mt-2">
-                  <div className="text-[10px] font-extrabold uppercase opacity-90">Derse Katılım</div>
-                  <div className="text-base font-black">+{score.plusCount} / -{score.minusCount}</div>
+                <div className="mt-1">
+                  <div className="text-[8px] sm:text-[10px] font-extrabold uppercase opacity-90 truncate" title="Derse Katılım">Katılım</div>
+                  <div className="text-[10px] sm:text-sm font-black truncate">+{score.plusCount} / -{score.minusCount}</div>
                 </div>
               </button>
 
               {/* Quiz Card */}
               <button
                 onClick={() => setActiveDetailTab('quiz')}
-                className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                className={`p-1.5 sm:p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   activeDetailTab === 'quiz'
-                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-md ring-2 ring-indigo-300'
+                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm ring-2 ring-indigo-300'
                     : 'bg-indigo-50/80 text-indigo-950 border-indigo-200 hover:bg-indigo-100'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <Award className="w-4 h-4" />
-                  <span className="text-[10px] font-bold opacity-80">%{weights.quizWeight}</span>
+                <div className="flex items-center justify-between gap-0.5">
+                  <Award className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="text-[8px] sm:text-[10px] font-bold opacity-80">%{weights.quizWeight}</span>
                 </div>
-                <div className="mt-2">
-                  <div className="text-[10px] font-extrabold uppercase opacity-90">Quiz / Sınav</div>
-                  <div className="text-base font-black">{score.quizAverage}</div>
+                <div className="mt-1">
+                  <div className="text-[8px] sm:text-[10px] font-extrabold uppercase opacity-90 truncate" title="Quiz / Sınav">Quiz</div>
+                  <div className="text-[10px] sm:text-sm font-black truncate">{score.quizAverage}</div>
                 </div>
               </button>
 
               {/* Ödev Card */}
               <button
                 onClick={() => setActiveDetailTab('homework')}
-                className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                className={`p-1.5 sm:p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   activeDetailTab === 'homework'
-                    ? 'bg-sky-500 text-white border-sky-600 shadow-md ring-2 ring-sky-300'
+                    ? 'bg-sky-500 text-white border-sky-600 shadow-sm ring-2 ring-sky-300'
                     : 'bg-sky-50/80 text-sky-950 border-sky-200 hover:bg-sky-100'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <BookOpen className="w-4 h-4" />
-                  <span className="text-[10px] font-bold opacity-80">%{weights.homeworkWeight}</span>
+                <div className="flex items-center justify-between gap-0.5">
+                  <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="text-[8px] sm:text-[10px] font-bold opacity-80">%{weights.homeworkWeight}</span>
                 </div>
-                <div className="mt-2">
-                  <div className="text-[10px] font-extrabold uppercase opacity-90">Ödev Takip</div>
-                  <div className="text-base font-black">%{score.homeworkScore}</div>
+                <div className="mt-1">
+                  <div className="text-[8px] sm:text-[10px] font-extrabold uppercase opacity-90 truncate" title="Ödev Takip">Ödev</div>
+                  <div className="text-[10px] sm:text-sm font-black truncate">%{score.homeworkScore}</div>
                 </div>
               </button>
             </div>

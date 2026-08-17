@@ -556,6 +556,19 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Floating Fixed Save Button for Notebook */}
+      <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40">
+        <button
+          type="button"
+          onClick={handleSaveAll}
+          className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white shadow-xl shadow-amber-600/30 border-2 border-amber-400/30 font-bold flex items-center gap-2.5 p-3.5 sm:px-5 sm:py-3.5 rounded-full sm:rounded-2xl transition-all cursor-pointer active:scale-95 hover:scale-105 group"
+          title="Defter Kontrollerini Kaydet"
+        >
+          <Save className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+          <span className="hidden sm:inline font-extrabold text-xs">Defteri Kaydet</span>
+        </button>
+      </div>
     </div>
   );
 };

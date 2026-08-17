@@ -198,6 +198,7 @@ export interface PeriodTime {
 }
 
 export interface ScheduleConfig {
+  defaultView?: 'daily' | 'grid' | 'list'; // Default landing view tab
   periodsPerDay: number;           // e.g. 8, 10, 15 (default: 10)
   lessonDurationMinutes: number;   // e.g. 40 min
   breakDurationMinutes: number;    // e.g. 10 min

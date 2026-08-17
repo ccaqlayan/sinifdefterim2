@@ -75,6 +75,7 @@ export function generatePeriodTimes(
 }
 
 export const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
+  defaultView: 'daily',
   periodsPerDay: 10,
   lessonDurationMinutes: 40,
   breakDurationMinutes: 10,
