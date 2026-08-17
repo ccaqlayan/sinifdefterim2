@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ScheduleConfig, ScheduleDay, ScheduleLesson, ClassRoom } from '../../types';
 import { ALL_DAYS, DAY_FULL_NAMES, getTodayScheduleDay } from '../../utils/scheduleUtils';
+import { useCurrentLessonTracker } from '../../utils/currentLessonTracker';
 import { ScheduleConfirmModal } from './ScheduleConfirmModal';
-import { Plus, Edit3, Trash2, Copy, BookOpen, Clock, AlertCircle, Sparkles } from 'lucide-react';
+import { Plus, Edit3, Trash2, Copy, BookOpen, Clock, AlertCircle, Sparkles, Zap } from 'lucide-react';
 
 interface WeeklyScheduleGridProps {
   config: ScheduleConfig;
@@ -28,6 +29,8 @@ export const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
   const [selectedLesson, setSelectedLesson] = useState<ScheduleLesson | null>(null);
   const [lessonToDelete, setLessonToDelete] = useState<ScheduleLesson | null>(null);
   const todayDay = getTodayScheduleDay();
+
+  const { status } = useCurrentLessonTracker(config, lessons, classes);
 
   const daysToRender = config.activeDays.length > 0 ? config.activeDays : ['Pzt', 'Sal', 'Çar', 'Per', 'Cum'];
   const periodsCount = config.periodsPerDay || 10;
@@ -127,27 +130,72 @@ export const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
                       const lesson = getLessonAt(day, period);
                       const isToday = day === todayDay;
 
+                      const isOngoing =
+                        status.state === 'ONGOING' &&
+                        status.currentLesson?.day === day &&
+                        status.currentPeriod?.period === period;
+
+                      const isNext =
+                        status.nextLesson?.day === day &&
+                        status.nextPeriod?.period === period;
+
                       return (
                         <td
                           key={`${day}-${period}`}
                           className={`p-0.5 sm:p-1.5 border-r border-slate-100 last:border-r-0 align-middle h-11 sm:h-16 md:h-20 transition-all ${
-                            isToday ? 'bg-indigo-50/30' : ''
+                            isOngoing
+                              ? 'bg-rose-100/60 font-black'
+                              : isNext
+                              ? 'bg-amber-100/50 font-bold'
+                              : isToday
+                              ? 'bg-indigo-50/30'
+                              : ''
                           }`}
                         >
                           {lesson ? (
                             /* Occupied Lesson Card */
                             <div
                               onClick={() => setSelectedLesson(lesson)}
-                              className="w-full h-full min-h-[38px] sm:min-h-[58px] p-0.5 sm:p-2 rounded-lg sm:rounded-xl text-white font-black shadow-2xs hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex flex-col justify-center items-center text-center relative group select-none overflow-hidden"
+                              className={`w-full h-full min-h-[38px] sm:min-h-[58px] p-0.5 sm:p-1.5 rounded-lg sm:rounded-xl text-white font-black transition-all cursor-pointer flex flex-col justify-center items-center text-center relative group select-none overflow-hidden ${
+                                isOngoing
+                                  ? 'ring-4 ring-rose-500 border-2 border-amber-300 shadow-xl animate-pulse scale-[1.03] z-20'
+                                  : isNext
+                                  ? 'ring-2 ring-amber-400 border border-amber-300 shadow-md z-10'
+                                  : 'shadow-2xs hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
+                              }`}
                               style={{ backgroundColor: lesson.color }}
                               title={`${lesson.title} (${DAY_FULL_NAMES[day]} ${period}. Ders)`}
                             >
+                              {/* Top Badge for Ongoing or Next */}
+                              {isOngoing && (
+                                <div className="absolute top-0 inset-x-0 bg-rose-600 text-white text-[7px] sm:text-[9px] font-black uppercase tracking-tight py-0.2 px-0.5 flex items-center justify-center gap-0.5 shadow-xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                  <span>CANLI DERS</span>
+                                </div>
+                              )}
+
+                              {isNext && !isOngoing && (
+                                <div className="absolute top-0 inset-x-0 bg-amber-400 text-slate-950 text-[7px] sm:text-[9px] font-black uppercase tracking-tight py-0.2 px-0.5 flex items-center justify-center gap-0.5 shadow-xs">
+                                  <span>SIRADAKİ</span>
+                                </div>
+                              )}
+
                               {/* Short name on all devices, styled to fit neatly on mobile */}
-                              <span className="text-[10px] sm:text-xs md:text-sm font-black tracking-tight leading-tight line-clamp-2 px-0.5 text-center break-words drop-shadow-xs">
+                              <span className={`text-[10px] sm:text-xs md:text-sm font-black tracking-tight leading-tight line-clamp-2 px-0.5 text-center break-words drop-shadow-xs ${
+                                isOngoing || isNext ? 'mt-2.5 sm:mt-3' : ''
+                              }`}>
                                 {lesson.shortName || lesson.title}
                               </span>
+
+                              {/* Live time remaining badge inside ongoing card */}
+                              {isOngoing && status.formattedTimeRemaining && (
+                                <span className="text-[7px] sm:text-[9px] font-black bg-black/40 text-amber-300 px-1 py-0.2 rounded mt-0.5 hidden sm:inline-block">
+                                  {status.formattedTimeRemaining}
+                                </span>
+                              )}
+
                               {/* Full title only visible on tablet / desktop */}
-                              {lesson.title && lesson.title !== lesson.shortName && (
+                              {lesson.title && lesson.title !== lesson.shortName && !isOngoing && !isNext && (
                                 <span className="text-[10px] opacity-90 font-medium truncate max-w-full hidden md:block">
                                   {lesson.title}
                                 </span>

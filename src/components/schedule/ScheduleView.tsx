@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { ScheduleConfig, ScheduleDay, ScheduleLesson, ClassRoom } from '../../types';
 import { WeeklyScheduleGrid } from './WeeklyScheduleGrid';
+import { CurrentLessonWidget } from './CurrentLessonWidget';
 import { LessonModal } from './LessonModal';
 import { ScheduleSettingsModal } from './ScheduleSettingsModal';
 import { ScheduleConfirmModal } from './ScheduleConfirmModal';
 import { ALL_DAYS, DAY_FULL_NAMES, INITIAL_SCHEDULE_LESSONS, getTodayScheduleDay } from '../../utils/scheduleUtils';
+import { useCurrentLessonTracker } from '../../utils/currentLessonTracker';
 import { 
   Calendar, 
   Plus, 
@@ -20,7 +22,8 @@ import {
   Layers, 
   List, 
   Grid,
-  AlertCircle
+  AlertCircle,
+  Edit3
 } from 'lucide-react';
 
 interface ScheduleViewProps {
@@ -60,6 +63,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const [lessonToDelete, setLessonToDelete] = useState<ScheduleLesson | null>(null);
   const [editingLesson, setEditingLesson] = useState<ScheduleLesson | null>(null);
   const [initialSlot, setInitialSlot] = useState<{ day: ScheduleDay; period: number } | null>(null);
+
+  const { status } = useCurrentLessonTracker(config, lessons, classes);
 
   // Status message
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -192,6 +197,14 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Live Current / Upcoming Lesson Banner Widget */}
+      <CurrentLessonWidget
+        config={config}
+        lessons={lessons}
+        classes={classes}
+        onSelectClass={onSelectClass}
+      />
 
       {/* Control Bar: View Switcher & Secondary Actions */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200 shadow-2xs">
@@ -366,34 +379,96 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                   <div className="space-y-2">
                     {todayLessons.map((l) => {
                       const pTime = config.periodTimes.find((p) => p.period === l.period);
+                      
+                      const isOngoing = status.state === 'ONGOING' && status.currentLesson?.id === l.id;
+                      const isNext = status.nextLesson?.id === l.id;
+                      
                       return (
                         <div
                           key={l.id}
-                          className="p-3 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 hover:border-slate-300 transition-all bg-slate-50/50"
+                          className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                            isOngoing
+                              ? 'border-rose-300 bg-rose-50/50 shadow-md ring-2 ring-rose-500 scale-[1.01]'
+                              : isNext
+                              ? 'border-amber-300 bg-amber-50/50 shadow-sm ring-1 ring-amber-400'
+                              : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
+                          }`}
                         >
                           <div className="flex items-center gap-3">
                             <div
-                              className="w-12 h-12 rounded-xl text-white font-black text-xs flex items-center justify-center shrink-0 shadow-2xs text-center"
+                              className={`w-12 h-12 rounded-xl text-white font-black text-xs flex items-center justify-center shrink-0 text-center ${
+                                isOngoing ? 'shadow-lg animate-pulse' : 'shadow-2xs'
+                              }`}
                               style={{ backgroundColor: l.color }}
                             >
                               {l.shortName}
                             </div>
-                            <div>
-                              <h4 className="text-sm font-black text-slate-800">{l.title}</h4>
-                              <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-                                <Clock className="w-3 h-3 text-slate-400" />
-                                {l.period}. Ders • {l.startTime || pTime?.startTime || ''} - {l.endTime || pTime?.endTime || ''}
+                            <div className="flex flex-col">
+                              <h4 className="text-sm font-black text-slate-800 flex flex-wrap items-center gap-2">
+                                <span>{l.title}</span>
+                                {isOngoing && (
+                                  <span className="hidden sm:flex text-[9px] bg-rose-600 text-white px-1.5 py-0.5 rounded uppercase tracking-wider items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                    CANLI
+                                  </span>
+                                )}
+                                {isNext && !isOngoing && (
+                                  <span className="hidden sm:inline-block text-[9px] bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded uppercase tracking-wider font-extrabold">
+                                    SIRADAKİ
+                                  </span>
+                                )}
+                              </h4>
+                              <p className={`text-xs font-medium flex items-center gap-1.5 mt-0.5 ${isOngoing ? 'text-rose-600 font-bold' : isNext ? 'text-amber-700' : 'text-slate-500'}`}>
+                                <Clock className={`w-3 h-3 ${isOngoing ? 'text-rose-500 animate-pulse' : isNext ? 'text-amber-600' : 'text-slate-400'}`} />
+                                <span>{l.period}. Ders • {l.startTime || pTime?.startTime || ''} - {l.endTime || pTime?.endTime || ''}</span>
+                                {isOngoing && status.formattedTimeRemaining && (
+                                  <span className="hidden sm:inline-block ml-1 text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-md border border-rose-200">
+                                    Bitimine: {status.formattedTimeRemaining}
+                                  </span>
+                                )}
+                                {isNext && status.formattedTimeRemaining && (
+                                  <span className="hidden sm:inline-block ml-1 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md border border-amber-200">
+                                    Başlamasına: {status.formattedTimeRemaining}
+                                  </span>
+                                )}
                               </p>
+                              
+                              {/* Mobile Only: Badges on new line */}
+                              {(isOngoing || isNext) && (
+                                <div className="flex sm:hidden items-center flex-wrap gap-2 mt-1.5">
+                                  {isOngoing && (
+                                    <>
+                                      <span className="text-[9px] bg-rose-600 text-white px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                        CANLI
+                                      </span>
+                                      <span className="text-[10px] font-bold text-rose-700">
+                                        Bitimine: {status.formattedTimeRemaining}
+                                      </span>
+                                    </>
+                                  )}
+                                  {isNext && !isOngoing && (
+                                    <>
+                                      <span className="text-[9px] bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded uppercase tracking-wider font-extrabold">
+                                        SIRADAKİ
+                                      </span>
+                                      <span className="text-[10px] font-bold text-amber-700">
+                                        Başlamasına: {status.formattedTimeRemaining}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1">
+                          <div className="flex flex-col sm:flex-row items-center gap-1 shrink-0">
                             <button
                               onClick={() => handleEditLesson(l)}
-                              className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
                               title="Düzenle"
                             >
-                              Düzenle
+                              <Edit3 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => setLessonToDelete(l)}

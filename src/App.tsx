@@ -684,6 +684,8 @@ export default function App() {
                   onOpenAddClassModal={() => setIsClassModalOpen(true)}
                   academicYearConfig={academicYearConfig}
                   onOpenAcademicSettings={() => setIsAcademicSettingsOpen(true)}
+                  scheduleConfig={scheduleConfig}
+                  scheduleLessons={scheduleLessons}
                 />
               )}
 

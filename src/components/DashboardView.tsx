@@ -8,9 +8,12 @@ import {
   NotebookControl,
   WeightSettings,
   AcademicYearConfig,
+  ScheduleConfig,
+  ScheduleLesson,
 } from '../types';
 import { calculateStudentOverallScore } from '../utils/calculations';
 import { filterLogsByTerm, filterQuizScoresByTerm, filterNotebookControlsByTerm, getTermLabel, getTermDateRangeString } from '../utils/termUtils';
+import { CurrentLessonWidget } from './schedule/CurrentLessonWidget';
 import {
   Zap,
   BookMarked,
@@ -43,6 +46,8 @@ interface DashboardViewProps {
   onOpenAddClassModal?: () => void;
   academicYearConfig?: AcademicYearConfig;
   onOpenAcademicSettings?: () => void;
+  scheduleConfig?: ScheduleConfig;
+  scheduleLessons?: ScheduleLesson[];
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -62,6 +67,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAddClassModal,
   academicYearConfig,
   onOpenAcademicSettings,
+  scheduleConfig,
+  scheduleLessons,
 }) => {
   const currentClass = classes.find((c) => c.id === selectedClassId) || classes[0];
   const classStudents = currentClass ? students.filter((s) => s.classId === currentClass.id) : [];
@@ -99,6 +106,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-4 pb-20 animate-in fade-in duration-200">
+      {/* Live Current / Upcoming Lesson Banner Widget */}
+      <CurrentLessonWidget
+        config={scheduleConfig || {
+          periodsPerDay: 10,
+          lessonDurationMinutes: 40,
+          breakDurationMinutes: 10,
+          firstLessonStartTime: '09:00',
+          activeDays: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum'],
+          periodTimes: [],
+        }}
+        lessons={scheduleLessons || []}
+        classes={classes}
+        onSelectClass={onSelectClass}
+        onNavigateSchedule={() => onNavigateTab('schedule')}
+      />
+
       {/* Banner / Header Summary or Empty State Onboarding */}
       {classes.length === 0 ? (
         <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-3xl p-6 shadow-lg relative overflow-hidden">
