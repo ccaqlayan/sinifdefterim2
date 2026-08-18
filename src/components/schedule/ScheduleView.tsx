@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ScheduleConfig, ScheduleDay, ScheduleLesson, ClassRoom } from '../../types';
+import { ScheduleConfig, ScheduleDay, ScheduleLesson, ClassRoom, AnnualPlanItem, AcademicYearConfig } from '../../types';
 import { WeeklyScheduleGrid } from './WeeklyScheduleGrid';
 import { CurrentLessonWidget } from './CurrentLessonWidget';
 import { LessonModal } from './LessonModal';
 import { ScheduleSettingsModal } from './ScheduleSettingsModal';
 import { ScheduleConfirmModal } from './ScheduleConfirmModal';
+import { AiScheduleImportModal } from './AiScheduleImportModal';
 import { ALL_DAYS, DAY_FULL_NAMES, INITIAL_SCHEDULE_LESSONS, getTodayScheduleDay } from '../../utils/scheduleUtils';
 import { useCurrentLessonTracker } from '../../utils/currentLessonTracker';
 import { 
@@ -23,13 +24,16 @@ import {
   List, 
   Grid,
   AlertCircle,
-  Edit3
+  Edit3,
+  Coffee
 } from 'lucide-react';
 
 interface ScheduleViewProps {
   config: ScheduleConfig;
   lessons: ScheduleLesson[];
   classes: ClassRoom[];
+  annualPlanItems?: AnnualPlanItem[];
+  academicYearConfig?: AcademicYearConfig;
   onSaveLesson: (lessonData: Omit<ScheduleLesson, 'id'>, isBatchMode: boolean) => void;
   onUpdateLesson: (lesson: ScheduleLesson) => void;
   onDeleteLesson: (lessonId: string) => void;
@@ -38,12 +42,16 @@ interface ScheduleViewProps {
   onSaveConfig: (config: ScheduleConfig) => void;
   onSelectClass?: (classId: string) => void;
   onBackToDashboard?: () => void;
+  onBatchReplaceSchedule?: (newLessons: ScheduleLesson[], newConfig: ScheduleConfig, auditDetails?: string) => void;
+  onOpenPlanDetail?: (grade: string, classNameTitle: string, currentWeek: number) => void;
 }
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
   config,
   lessons,
   classes,
+  annualPlanItems = [],
+  academicYearConfig,
   onSaveLesson,
   onUpdateLesson,
   onDeleteLesson,
@@ -52,6 +60,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   onSaveConfig,
   onSelectClass,
   onBackToDashboard,
+  onBatchReplaceSchedule,
+  onOpenPlanDetail,
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'daily' | 'list'>(config.defaultView || 'daily');
   const [selectedDay, setSelectedDay] = useState<ScheduleDay>(getTodayScheduleDay());
@@ -66,6 +76,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
+  const [isAiImportModalOpen, setIsAiImportModalOpen] = useState(false);
   const [lessonToDelete, setLessonToDelete] = useState<ScheduleLesson | null>(null);
   const [editingLesson, setEditingLesson] = useState<ScheduleLesson | null>(null);
   const [initialSlot, setInitialSlot] = useState<{ day: ScheduleDay; period: number } | null>(null);
@@ -137,6 +148,53 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     }
   };
 
+  // Move or Swap lesson slot handler (Drag and Drop)
+  const handleMoveOrSwapLesson = (
+    draggedLesson: ScheduleLesson,
+    targetDay: ScheduleDay,
+    targetPeriod: number
+  ) => {
+    if (draggedLesson.day === targetDay && draggedLesson.period === targetPeriod) {
+      return;
+    }
+
+    const targetPeriodTime = config.periodTimes.find((p) => p.period === targetPeriod);
+    const sourcePeriodTime = config.periodTimes.find((p) => p.period === draggedLesson.period);
+    const targetLesson = lessons.find((l) => l.day === targetDay && l.period === targetPeriod);
+
+    if (targetLesson) {
+      // Swap the two lessons
+      const updatedDragged: ScheduleLesson = {
+        ...draggedLesson,
+        day: targetDay,
+        period: targetPeriod,
+        startTime: targetPeriodTime?.startTime || draggedLesson.startTime,
+        endTime: targetPeriodTime?.endTime || draggedLesson.endTime,
+      };
+      const updatedTarget: ScheduleLesson = {
+        ...targetLesson,
+        day: draggedLesson.day,
+        period: draggedLesson.period,
+        startTime: sourcePeriodTime?.startTime || targetLesson.startTime,
+        endTime: sourcePeriodTime?.endTime || targetLesson.endTime,
+      };
+      onUpdateLesson(updatedDragged);
+      onUpdateLesson(updatedTarget);
+      showToast(`${draggedLesson.shortName || draggedLesson.title} ⇄ ${targetLesson.shortName || targetLesson.title} yer değiştirildi.`);
+    } else {
+      // Move to empty slot
+      const updatedDragged: ScheduleLesson = {
+        ...draggedLesson,
+        day: targetDay,
+        period: targetPeriod,
+        startTime: targetPeriodTime?.startTime || draggedLesson.startTime,
+        endTime: targetPeriodTime?.endTime || draggedLesson.endTime,
+      };
+      onUpdateLesson(updatedDragged);
+      showToast(`${draggedLesson.shortName || draggedLesson.title} -> ${DAY_FULL_NAMES[targetDay]} ${targetPeriod}. saate taşındı.`);
+    }
+  };
+
   // Print schedule
   const handlePrint = () => {
     window.print();
@@ -183,7 +241,16 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              onClick={() => setIsAiImportModalOpen(true)}
+              className="flex-1 sm:flex-initial px-3 py-2 sm:px-3.5 sm:py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black rounded-xl sm:rounded-2xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95"
+              title="Fotoğraftan / Görselden Yapay Zeka ile Otomatik Yükle"
+            >
+              <Sparkles className="w-4 h-4 text-slate-950 fill-amber-300" />
+              <span className="whitespace-nowrap">Fotoğraftan Yükle</span>
+            </button>
+
             <button
               onClick={() => setIsSettingsModalOpen(true)}
               className="flex-1 sm:flex-initial px-3 py-2 sm:px-3.5 sm:py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-black rounded-xl sm:rounded-2xl transition-all border border-white/20 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
@@ -209,7 +276,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         config={config}
         lessons={lessons}
         classes={classes}
+        annualPlanItems={annualPlanItems}
+        academicYearConfig={academicYearConfig}
         onSelectClass={onSelectClass}
+        onOpenPlanDetail={onOpenPlanDetail}
       />
 
       {/* Control Bar: View Switcher & Secondary Actions */}
@@ -255,12 +325,21 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
         {/* Secondary Management Options */}
         <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end flex-wrap">
+          <button
+            onClick={() => setIsAiImportModalOpen(true)}
+            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            title="Fotoğraftan Programı Otomatik Çözümle"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span className="hidden sm:inline">Fotoğraftan </span>AI İçe Aktar
+          </button>
+
           {lessons.length === 0 ? (
             <button
               onClick={onLoadInitialTemplate}
-              className="w-full sm:w-auto px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-xl border border-amber-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full sm:w-auto px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
               Örnek Programı Yükle
             </button>
           ) : (
@@ -297,11 +376,18 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           <div>
             <h3 className="text-base font-black text-slate-800">Ders Programınız Henüz Boş</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
-              Ders programı eklemek isteğe bağlıdır. Hazır örnek programı yükleyebilir veya derslerinizi tek tek eklemeye başlayabilirsiniz.
+              Öğretmen haftalık ders çizelgenizin fotoğrafını yükleyerek ders saatleri ve sınıfları saniyeler içinde otomatik aktarabilirsiniz.
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+            <button
+              onClick={() => setIsAiImportModalOpen(true)}
+              className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-slate-950 fill-amber-300" />
+              Fotoğraftan AI ile Yükle
+            </button>
             <button
               onClick={onLoadInitialTemplate}
               className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -314,7 +400,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              Kendi Dersimi Ekle
+              Elle Ders Ekle
             </button>
           </div>
         </div>
@@ -331,6 +417,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               onDeleteLesson={onDeleteLesson}
               onDuplicateLesson={handleDuplicateLesson}
               onSelectClass={onSelectClass}
+              onMoveLesson={handleMoveOrSwapLesson}
             />
           )}
 
@@ -388,103 +475,113 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                       
                       const isOngoing = status.state === 'ONGOING' && status.currentLesson?.id === l.id;
                       const isNext = status.nextLesson?.id === l.id;
+                      const isLunchAfterThis = config.lunchBreakAfterPeriod && l.period === config.lunchBreakAfterPeriod;
                       
                       return (
-                        <div
-                          key={l.id}
-                          className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                            isOngoing
-                              ? 'border-rose-300 bg-rose-50/50 shadow-md ring-2 ring-rose-500 scale-[1.01]'
-                              : isNext
-                              ? 'border-amber-300 bg-amber-50/50 shadow-sm ring-1 ring-amber-400'
-                              : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-12 h-12 rounded-xl text-white font-black text-xs flex items-center justify-center shrink-0 text-center ${
-                                isOngoing ? 'shadow-lg animate-pulse' : 'shadow-2xs'
-                              }`}
-                              style={{ backgroundColor: l.color }}
-                            >
-                              {l.shortName}
-                            </div>
-                            <div className="flex flex-col">
-                              <h4 className="text-sm font-black text-slate-800 flex flex-wrap items-center gap-2">
-                                <span>{l.title}</span>
-                                {isOngoing && (
-                                  <span className="hidden sm:flex text-[9px] bg-rose-600 text-white px-1.5 py-0.5 rounded uppercase tracking-wider items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                    CANLI
-                                  </span>
-                                )}
-                                {isNext && !isOngoing && (
-                                  <span className="hidden sm:inline-block text-[9px] bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded uppercase tracking-wider font-extrabold">
-                                    SIRADAKİ
-                                  </span>
-                                )}
-                              </h4>
-                              <p className={`text-xs font-medium flex items-center gap-1.5 mt-0.5 ${isOngoing ? 'text-rose-600 font-bold' : isNext ? 'text-amber-700' : 'text-slate-500'}`}>
-                                <Clock className={`w-3 h-3 ${isOngoing ? 'text-rose-500 animate-pulse' : isNext ? 'text-amber-600' : 'text-slate-400'}`} />
-                                <span>{l.period}. Ders • {l.startTime || pTime?.startTime || ''} - {l.endTime || pTime?.endTime || ''}</span>
-                                {isOngoing && status.formattedTimeRemaining && (
-                                  <span className="hidden sm:inline-block ml-1 text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-md border border-rose-200">
-                                    Bitimine: {status.formattedTimeRemaining}
-                                  </span>
-                                )}
-                                {isNext && status.formattedTimeRemaining && (
-                                  <span className="hidden sm:inline-block ml-1 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md border border-amber-200">
-                                    Başlamasına: {status.formattedTimeRemaining}
-                                  </span>
-                                )}
-                              </p>
-                              
-                              {/* Mobile Only: Badges on new line */}
-                              {(isOngoing || isNext) && (
-                                <div className="flex sm:hidden items-center flex-wrap gap-2 mt-1.5">
+                        <React.Fragment key={l.id}>
+                          <div
+                            className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                              isOngoing
+                                ? 'border-rose-300 bg-rose-50/50 shadow-md ring-2 ring-rose-500 scale-[1.01]'
+                                : isNext
+                                ? 'border-amber-300 bg-amber-50/50 shadow-sm ring-1 ring-amber-400'
+                                : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-12 h-12 rounded-xl text-white font-black text-xs flex items-center justify-center shrink-0 text-center ${
+                                  isOngoing ? 'shadow-lg animate-pulse' : 'shadow-2xs'
+                                }`}
+                                style={{ backgroundColor: l.color }}
+                              >
+                                {l.shortName}
+                              </div>
+                              <div className="flex flex-col">
+                                <h4 className="text-sm font-black text-slate-800 flex flex-wrap items-center gap-2">
+                                  <span>{l.title}</span>
                                   {isOngoing && (
-                                    <>
-                                      <span className="text-[9px] bg-rose-600 text-white px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                        CANLI
-                                      </span>
-                                      <span className="text-[10px] font-bold text-rose-700">
-                                        Bitimine: {status.formattedTimeRemaining}
-                                      </span>
-                                    </>
+                                    <span className="hidden sm:flex text-[9px] bg-rose-600 text-white px-1.5 py-0.5 rounded uppercase tracking-wider items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                      CANLI
+                                    </span>
                                   )}
                                   {isNext && !isOngoing && (
-                                    <>
-                                      <span className="text-[9px] bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded uppercase tracking-wider font-extrabold">
-                                        SIRADAKİ
-                                      </span>
-                                      <span className="text-[10px] font-bold text-amber-700">
-                                        Başlamasına: {status.formattedTimeRemaining}
-                                      </span>
-                                    </>
+                                    <span className="hidden sm:inline-block text-[9px] bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded uppercase tracking-wider font-extrabold">
+                                      SIRADAKİ
+                                    </span>
                                   )}
-                                </div>
-                              )}
+                                </h4>
+                                <p className={`text-xs font-medium flex items-center gap-1.5 mt-0.5 ${isOngoing ? 'text-rose-600 font-bold' : isNext ? 'text-amber-700' : 'text-slate-500'}`}>
+                                  <Clock className={`w-3 h-3 ${isOngoing ? 'text-rose-500 animate-pulse' : isNext ? 'text-amber-600' : 'text-slate-400'}`} />
+                                  <span>{l.period}. Ders • {l.startTime || pTime?.startTime || ''} - {l.endTime || pTime?.endTime || ''}</span>
+                                  {isOngoing && status.formattedTimeRemaining && (
+                                    <span className="hidden sm:inline-block ml-1 text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-md border border-rose-200">
+                                      Bitimine: {status.formattedTimeRemaining}
+                                    </span>
+                                  )}
+                                  {isNext && status.formattedTimeRemaining && (
+                                    <span className="hidden sm:inline-block ml-1 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md border border-amber-200">
+                                      Başlamasına: {status.formattedTimeRemaining}
+                                    </span>
+                                  )}
+                                </p>
+                                
+                                {/* Mobile Only: Badges on new line */}
+                                {(isOngoing || isNext) && (
+                                  <div className="flex sm:hidden items-center flex-wrap gap-2 mt-1.5">
+                                    {isOngoing && (
+                                      <>
+                                        <span className="text-[9px] bg-rose-600 text-white px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                          CANLI
+                                        </span>
+                                        <span className="text-[10px] font-bold text-rose-700">
+                                          Bitimine: {status.formattedTimeRemaining}
+                                        </span>
+                                      </>
+                                    )}
+                                    {isNext && !isOngoing && (
+                                      <>
+                                        <span className="text-[9px] bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded uppercase tracking-wider font-extrabold">
+                                          SIRADAKİ
+                                        </span>
+                                        <span className="text-[10px] font-bold text-amber-700">
+                                          Başlamasına: {status.formattedTimeRemaining}
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => handleEditLesson(l)}
+                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
+                                title="Düzenle"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setLessonToDelete(l)}
+                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                title="Sil"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => handleEditLesson(l)}
-                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
-                              title="Düzenle"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setLessonToDelete(l)}
-                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                              title="Sil"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
+                          {/* Lunch Break banner in Daily view */}
+                          {isLunchAfterThis && (
+                            <div className="p-2.5 bg-amber-500/10 border border-amber-300/80 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold text-amber-900 shadow-2xs">
+                              <Coffee className="w-4 h-4 text-amber-700" />
+                              <span>Öğle Arası Dinlenme Molası ({config.lunchBreakMinutes || 50} Dakika)</span>
+                            </div>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </div>
@@ -562,6 +659,24 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         onSaveConfig={(updatedConfig) => {
           onSaveConfig(updatedConfig);
           showToast('Süreler ve çizelge ayarları kaydedildi.');
+        }}
+      />
+
+      {/* AI Schedule Photo Import Modal */}
+      <AiScheduleImportModal
+        isOpen={isAiImportModalOpen}
+        onClose={() => setIsAiImportModalOpen(false)}
+        existingLessonsCount={lessons.length}
+        currentConfig={config}
+        classes={classes}
+        onApplySchedule={(newLessons, newConfig, auditDetails) => {
+          if (onBatchReplaceSchedule) {
+            onBatchReplaceSchedule(newLessons, newConfig, auditDetails);
+          } else {
+            onSaveConfig(newConfig);
+            newLessons.forEach((l) => onSaveLesson(l, true));
+          }
+          showToast(`Fotoğraftan ${newLessons.length} ders başarıyla sisteme aktarıldı.`);
         }}
       />
 

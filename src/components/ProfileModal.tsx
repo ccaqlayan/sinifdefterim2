@@ -35,7 +35,9 @@ import {
   CheckCircle2,
   XCircle,
   Shield,
-  CheckCheck
+  CheckCheck,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { signInWithGoogle, signOutFirebase, auth } from '../lib/firebase';
 import { DEFAULT_LUCKY_DRAW_SETTINGS } from '../utils/storage';
@@ -96,6 +98,79 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // Fullscreen state in Profile Modal
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    if (typeof document === 'undefined') return false;
+    return Boolean(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement
+    );
+  });
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(
+        Boolean(
+          document.fullscreenElement ||
+          (document as any).webkitFullscreenElement ||
+          (document as any).mozFullScreenElement ||
+          (document as any).msFullscreenElement
+        )
+      );
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleToggleFullscreen = async () => {
+    try {
+      const doc = document as any;
+      const isCurrentlyFull = Boolean(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      );
+
+      if (!isCurrentlyFull) {
+        const elem = document.documentElement as any;
+        if (elem.requestFullscreen) {
+          await elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          await elem.webkitRequestFullscreen();
+        } else if (elem.mozRequestFullScreen) {
+          await elem.mozRequestFullScreen();
+        } else if (elem.msRequestFullscreen) {
+          await elem.msRequestFullscreen();
+        }
+      } else {
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (doc.mozCancelFullScreen) {
+          await doc.mozCancelFullScreen();
+        } else if (doc.msExitFullscreen) {
+          await doc.msExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Tam ekran geçişinde hata:', err);
+    }
+  };
 
   // Sync state with props when modal opens or user changes
   useEffect(() => {
@@ -753,6 +828,44 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     </button>
                   </div>
                 )}
+
+                {/* Tam Ekran Modu Hızlı Anahtarı */}
+                <div className={`p-3 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
+                  isFullscreen 
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-2xs' 
+                    : 'bg-slate-50 border-slate-200 text-slate-900'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 shadow-2xs ${
+                      isFullscreen ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-extrabold text-xs">Tam Ekran Modu</h4>
+                        <span className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
+                          isFullscreen ? 'bg-emerald-200 text-emerald-950' : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {isFullscreen ? 'Aktif' : 'Standart'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500">Tarayıcı çubuklarını gizleyerek uygulamayı tüm ekrana genişletin</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleFullscreen}
+                    className={`px-3 py-1.5 font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
+                      isFullscreen
+                        ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    }`}
+                  >
+                    {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                    <span>{isFullscreen ? 'Çık' : 'Tam Ekran Yap'}</span>
+                  </button>
+                </div>
 
                 <div className="p-3 bg-indigo-50/80 border border-indigo-100 rounded-2xl flex items-start gap-2.5 text-indigo-900">
                   <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />

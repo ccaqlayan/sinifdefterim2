@@ -9,7 +9,7 @@ export function calculateStudentOverallScore(
   weights: WeightSettings
 ): OverallTermScore {
   // 1. Plus Minus Calculation
-  const studentLogs = plusMinusLogs.filter(l => l.studentId === student.id);
+  const studentLogs = plusMinusLogs.filter(l => l.studentId === student.id && !l.isDeleted);
   const plusCount = studentLogs.filter(l => l.type === 'plus').length;
   const minusCount = studentLogs.filter(l => l.type === 'minus').length;
   
@@ -43,7 +43,7 @@ export function calculateStudentOverallScore(
   }
 
   // 4. Notebook Control Average
-  const studentNotebooks = notebookControls.filter(n => n.studentId === student.id);
+  const studentNotebooks = notebookControls.filter(n => n.studentId === student.id && !n.isDeleted);
   const hasNotebookData = studentNotebooks.length > 0;
   const notebookAverage: number | null = hasNotebookData
     ? Math.round(studentNotebooks.reduce((acc, n) => acc + n.percentage, 0) / studentNotebooks.length)

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Zap, BookMarked, Award, CheckSquare, Settings, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Zap, BookMarked, Award, CheckSquare, Settings, ShieldCheck, BookOpen } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface MobileBottomNavProps {
@@ -27,9 +27,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onS
     );
   }
 
-  const navItems = [
+  const navItems: { id: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] = [
     { id: 'dashboard', label: 'Anasayfa', icon: LayoutDashboard },
-    { id: 'quick-score', label: 'Pratik + / -', icon: Zap, badge: 'Sınıf' },
+    { id: 'outcomes', label: 'Kazanım', icon: BookOpen },
+    { id: 'quick-score', label: 'Pratik + / -', icon: Zap },
     { id: 'notebook', label: 'Defter', icon: BookMarked },
     { id: 'quiz', label: 'Quiz', icon: Award },
     { id: 'homework', label: 'Ödev', icon: CheckSquare },

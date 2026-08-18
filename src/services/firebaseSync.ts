@@ -4,17 +4,20 @@ import {
 import { db, auth } from '../lib/firebase';
 import { 
   ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, 
-  HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, ParentFeedbackLog,
-  User, LuckyDrawSettings, ScheduleConfig, ScheduleLesson, AcademicYearConfig 
+  HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, NotificationSettingsConfig, ParentFeedbackLog,
+  User, LuckyDrawSettings, ScheduleConfig, ScheduleLesson, AcademicYearConfig, AuditLog, AnnualPlanItem, LessonLogNote,
+  DashboardLayoutConfig 
 } from '../types';
 import { 
   INITIAL_CLASSES, INITIAL_STUDENTS, INITIAL_PLUS_MINUS_LOGS, 
   INITIAL_QUIZ_DEFINITIONS, INITIAL_QUIZZES, INITIAL_HOMEWORKS, INITIAL_HOMEWORK_RECORDS, 
   INITIAL_NOTEBOOK_CONTROLS, INITIAL_WEIGHT_SETTINGS, 
-  INITIAL_NOTIFICATION_SETTINGS, INITIAL_FEEDBACK_LOGS 
+  INITIAL_NOTIFICATION_SETTINGS, DEFAULT_NOTIFICATION_CONFIG, INITIAL_FEEDBACK_LOGS, INITIAL_AUDIT_LOGS,
+  INITIAL_LESSON_LOGS 
 } from '../mockData';
 import { DEFAULT_SCHEDULE_CONFIG, INITIAL_SCHEDULE_LESSONS } from '../utils/scheduleUtils';
 import { DEFAULT_ACADEMIC_YEAR_CONFIG } from '../utils/termUtils';
+import { DEFAULT_DASHBOARD_LAYOUT, normalizeDashboardLayout } from '../utils/dashboardLayoutUtils';
 import { Storage } from '../utils/storage';
 
 enum OperationType {
@@ -100,6 +103,9 @@ const COLS = {
   LUCKY_DRAW_SETTINGS: 'luckyDrawSettings',
   SCHEDULE_CONFIG: 'scheduleConfig',
   SCHEDULE_LESSONS: 'scheduleLessons',
+  AUDIT_LOGS: 'auditLogs',
+  ANNUAL_PLANS: 'annualPlans',
+  LESSON_LOGS: 'lessonLogs',
 };
 
 // Seed initial data for user if empty
@@ -145,6 +151,12 @@ export async function seedInitialDataIfEmpty(userId: string = 'usr-demo-teacher'
       }
       for (const sch of INITIAL_SCHEDULE_LESSONS) {
         await setDoc(doc(db, 'users', safeUid, COLS.SCHEDULE_LESSONS, sch.id), sanitizeForFirestore(sch));
+      }
+      for (const log of INITIAL_AUDIT_LOGS) {
+        await setDoc(doc(db, 'users', safeUid, COLS.AUDIT_LOGS, log.id), sanitizeForFirestore(log));
+      }
+      for (const ll of INITIAL_LESSON_LOGS) {
+        await setDoc(doc(db, 'users', safeUid, COLS.LESSON_LOGS, ll.id), sanitizeForFirestore(ll));
       }
     }
 
@@ -430,6 +442,15 @@ export async function saveNotebookControlToFirebase(userId: string, ctrl: Notebo
     await setDoc(doc(db, 'users', safeUid, COLS.NOTEBOOKS, ctrl.id), sanitizeForFirestore(ctrl));
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/${COLS.NOTEBOOKS}/${ctrl.id}`);
+  }
+}
+
+export async function deleteNotebookControlFromFirebase(userId: string, id: string) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await deleteDoc(doc(db, 'users', safeUid, COLS.NOTEBOOKS, id));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `users/${safeUid}/${COLS.NOTEBOOKS}/${id}`);
   }
 }
 
@@ -834,5 +855,224 @@ export async function saveAcademicYearConfigToFirebase(userId: string, config: A
     handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/settings/academicYearConfig`);
   }
 }
+
+// ----------------------------------------------------
+// AYAK İZİ / AUDIT LOGS FIREBASE SYNC
+// ----------------------------------------------------
+
+export function subscribeAuditLogs(userId: string, callback: (logs: AuditLog[]) => void) {
+  const safeUid = getSafeUserId(userId);
+  return onSnapshot(
+    collection(db, 'users', safeUid, COLS.AUDIT_LOGS),
+    (snapshot) => {
+      const logs = snapshot.docs.map((d) => d.data() as AuditLog);
+      callback(logs);
+    },
+    (err) => handleFirestoreError(err, OperationType.LIST, `users/${safeUid}/${COLS.AUDIT_LOGS}`)
+  );
+}
+
+export async function saveAuditLogToFirebase(userId: string, log: AuditLog) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await setDoc(doc(db, 'users', safeUid, COLS.AUDIT_LOGS, log.id), sanitizeForFirestore(log));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/${COLS.AUDIT_LOGS}`);
+  }
+}
+
+export async function deleteAuditLogFromFirebase(userId: string, logId: string) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await deleteDoc(doc(db, 'users', safeUid, COLS.AUDIT_LOGS, logId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `users/${safeUid}/${COLS.AUDIT_LOGS}`);
+  }
+}
+
+export async function clearAllAuditLogsFromFirebase(userId: string) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    const snapshot = await getDocs(collection(db, 'users', safeUid, COLS.AUDIT_LOGS));
+    const promises = snapshot.docs.map((d) => deleteDoc(d.ref));
+    await Promise.all(promises);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `users/${safeUid}/${COLS.AUDIT_LOGS}`);
+  }
+}
+
+// ----------------------------------------------------
+// YILLIK DERS PLANLARI (ANNUAL PLANS) FIREBASE SYNC
+// ----------------------------------------------------
+
+export function subscribeAnnualPlans(userId: string, callback: (items: AnnualPlanItem[]) => void) {
+  const safeUid = getSafeUserId(userId);
+  return onSnapshot(
+    collection(db, 'users', safeUid, COLS.ANNUAL_PLANS),
+    (snapshot) => {
+      const items: AnnualPlanItem[] = snapshot.docs.map((d) => d.data() as AnnualPlanItem);
+      callback(items);
+    },
+    (err) => handleFirestoreError(err, OperationType.LIST, `users/${safeUid}/${COLS.ANNUAL_PLANS}`)
+  );
+}
+
+export async function saveAnnualPlanItemToFirebase(userId: string, item: AnnualPlanItem) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await setDoc(doc(db, 'users', safeUid, COLS.ANNUAL_PLANS, item.id), sanitizeForFirestore(item));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/${COLS.ANNUAL_PLANS}/${item.id}`);
+  }
+}
+
+export async function batchSaveAnnualPlansToFirebase(userId: string, items: AnnualPlanItem[]) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    const snapshot = await getDocs(collection(db, 'users', safeUid, COLS.ANNUAL_PLANS));
+    const newItemIds = new Set(items.map((i) => i.id));
+
+    // Delete items from Firestore that are no longer in the items array
+    const deletePromises = snapshot.docs
+      .filter((d) => !newItemIds.has(d.id))
+      .map((d) => deleteDoc(d.ref));
+
+    // Set or update current items
+    const savePromises = items.map((i) =>
+      setDoc(doc(db, 'users', safeUid, COLS.ANNUAL_PLANS, i.id), sanitizeForFirestore(i))
+    );
+
+    await Promise.all([...deletePromises, ...savePromises]);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/${COLS.ANNUAL_PLANS}`);
+  }
+}
+
+export async function deleteAnnualPlanItemFromFirebase(userId: string, itemId: string) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await deleteDoc(doc(db, 'users', safeUid, COLS.ANNUAL_PLANS, itemId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `users/${safeUid}/${COLS.ANNUAL_PLANS}/${itemId}`);
+  }
+}
+
+export async function clearAllAnnualPlansFromFirebase(userId: string) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    const snapshot = await getDocs(collection(db, 'users', safeUid, COLS.ANNUAL_PLANS));
+    const promises = snapshot.docs.map((d) => deleteDoc(d.ref));
+    await Promise.all(promises);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `users/${safeUid}/${COLS.ANNUAL_PLANS}`);
+  }
+}
+
+// ----------------------------------------------------
+// BİLDİRİM AYARLARI (NOTIFICATION CONFIG) FIREBASE SYNC
+// ----------------------------------------------------
+
+export function subscribeNotificationConfig(userId: string, callback: (config: NotificationSettingsConfig) => void) {
+  const safeUid = getSafeUserId(userId);
+  return onSnapshot(
+    doc(db, 'users', safeUid, 'settings', 'notificationConfig'),
+    (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data() as NotificationSettingsConfig);
+      } else {
+        callback(DEFAULT_NOTIFICATION_CONFIG);
+      }
+    },
+    (err) => handleFirestoreError(err, OperationType.GET, `users/${safeUid}/settings/notificationConfig`)
+  );
+}
+
+export async function saveNotificationConfigToFirebase(userId: string, config: NotificationSettingsConfig) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await setDoc(
+      doc(db, 'users', safeUid, 'settings', 'notificationConfig'),
+      sanitizeForFirestore(config),
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/settings/notificationConfig`);
+  }
+}
+
+// ----------------------------------------------------
+// DİJİTAL DERS SEYİR DEFTERİ (LESSON LOGS) FIREBASE SYNC
+// ----------------------------------------------------
+
+export function subscribeLessonLogs(userId: string, callback: (logs: LessonLogNote[]) => void) {
+  const safeUid = getSafeUserId(userId);
+  return onSnapshot(
+    collection(db, 'users', safeUid, COLS.LESSON_LOGS),
+    (snap) => {
+      const items: LessonLogNote[] = snap.docs.map((d) => d.data() as LessonLogNote);
+      // Sort newest first
+      items.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
+      callback(items);
+    },
+    (err) => handleFirestoreError(err, OperationType.GET, `users/${safeUid}/${COLS.LESSON_LOGS}`)
+  );
+}
+
+export async function saveLessonLogToFirebase(userId: string, log: LessonLogNote) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await setDoc(
+      doc(db, 'users', safeUid, COLS.LESSON_LOGS, log.id),
+      sanitizeForFirestore(log),
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/${COLS.LESSON_LOGS}/${log.id}`);
+  }
+}
+
+export async function deleteLessonLogFromFirebase(userId: string, logId: string) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await deleteDoc(doc(db, 'users', safeUid, COLS.LESSON_LOGS, logId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `users/${safeUid}/${COLS.LESSON_LOGS}/${logId}`);
+  }
+}
+
+// ----------------------------------------------------
+// ANASAYFA DÜZENİ (DASHBOARD CUSTOMIZATION) SYNC
+// ----------------------------------------------------
+
+export function subscribeDashboardLayout(userId: string, callback: (layout: DashboardLayoutConfig) => void) {
+  const safeUid = getSafeUserId(userId);
+  return onSnapshot(
+    doc(db, 'users', safeUid, 'settings', 'dashboardLayout'),
+    (snap) => {
+      if (snap.exists()) {
+        const raw = snap.data() as DashboardLayoutConfig;
+        callback(normalizeDashboardLayout(raw));
+      } else {
+        callback(DEFAULT_DASHBOARD_LAYOUT);
+      }
+    },
+    (err) => handleFirestoreError(err, OperationType.GET, `users/${safeUid}/settings/dashboardLayout`)
+  );
+}
+
+export async function saveDashboardLayoutToFirebase(userId: string, layout: DashboardLayoutConfig) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await setDoc(
+      doc(db, 'users', safeUid, 'settings', 'dashboardLayout'),
+      sanitizeForFirestore(layout),
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/settings/dashboardLayout`);
+  }
+}
+
+
 
 

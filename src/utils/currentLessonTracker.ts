@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ScheduleConfig, ScheduleDay, ScheduleLesson, PeriodTime, ClassRoom } from '../types';
-import { DAY_FULL_NAMES, getTodayScheduleDay, generatePeriodTimes } from './scheduleUtils';
+import { DAY_FULL_NAMES, getTodayScheduleDay, generatePeriodTimes, findMatchingClassId } from './scheduleUtils';
 
 export type LessonState =
   | 'ONGOING'          // Currently in an active lesson
@@ -27,23 +27,6 @@ export interface CurrentLessonStatus {
   statusTitle: string;
   statusSubtitle: string;
   badgeLabel: string;
-}
-
-/**
- * Normalizes string for flexible matching (e.g. "10-C" -> "10C")
- */
-export function findMatchingClassId(lessonName: string, classes: ClassRoom[]): string | null {
-  if (!lessonName || !classes.length) return null;
-  const cleanStr = (s: string) => s.replace(/[\s\-_]/g, '').toUpperCase();
-  const target = cleanStr(lessonName);
-
-  for (const c of classes) {
-    const cName = cleanStr(c.name);
-    if (target.includes(cName) || cName.includes(target)) {
-      return c.id;
-    }
-  }
-  return null;
 }
 
 /**
@@ -128,7 +111,7 @@ export function getCurrentOrNextLessonStatus(
     if (activeLesson) {
       const endSecs = parseTimeToSeconds(activePeriod.endTime);
       const remainingSecs = Math.max(0, endSecs - currentSecs);
-      const currentClassId = findMatchingClassId(activeLesson.shortName || activeLesson.title, classes);
+      const currentClassId = findMatchingClassId(activeLesson, classes);
 
       // Look for next lesson today or future
       const futureLessonsToday = lessons
@@ -150,7 +133,7 @@ export function getCurrentOrNextLessonStatus(
         currentClassId,
         nextLesson: nextL,
         nextPeriod: nextP,
-        nextClassId: nextL ? findMatchingClassId(nextL.shortName || nextL.title, classes) : null,
+        nextClassId: nextL ? findMatchingClassId(nextL, classes) : null,
         nextLessonDayName: 'Bugün',
         nextLessonDayCode: todayCode,
         remainingSeconds: remainingSecs,
@@ -179,7 +162,7 @@ export function getCurrentOrNextLessonStatus(
     if (upcomingToday.length > 0) {
       const nextItem = upcomingToday[0];
       const remainingSecs = Math.max(0, nextItem.startSecs - currentSecs);
-      const nextClassId = findMatchingClassId(nextItem.lesson.shortName || nextItem.lesson.title, classes);
+      const nextClassId = findMatchingClassId(nextItem.lesson, classes);
 
       const isBreak = remainingSecs <= 30 * 60; // 30 mins or less = Break / Tenefüs
 
@@ -217,7 +200,7 @@ export function getCurrentOrNextLessonStatus(
     if (futureDayLessons.length > 0) {
       const nextL = futureDayLessons[0];
       const nextP = periods.find((p) => p.period === nextL.period) || null;
-      const nextClassId = findMatchingClassId(nextL.shortName || nextL.title, classes);
+      const nextClassId = findMatchingClassId(nextL, classes);
 
       let dayNameLabel = DAY_FULL_NAMES[futureDayCode];
       if (step === 1) dayNameLabel = `Yarın (${DAY_FULL_NAMES[futureDayCode]})`;

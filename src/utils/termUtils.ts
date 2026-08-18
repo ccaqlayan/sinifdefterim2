@@ -52,7 +52,7 @@ export function filterLogsByTerm(
   termSelection: ActiveTermSelection,
   config: AcademicYearConfig
 ): PerformanceLog[] {
-  return logs.filter((log) => isDateInTerm(log.date, termSelection, config));
+  return logs.filter((log) => !log.isDeleted && isDateInTerm(log.date, termSelection, config));
 }
 
 /**
@@ -63,7 +63,7 @@ export function filterQuizDefsByTerm(
   termSelection: ActiveTermSelection,
   config: AcademicYearConfig
 ): Quiz[] {
-  return quizzes.filter((q) => isDateInTerm(q.date, termSelection, config));
+  return quizzes.filter((q) => !q.isDeleted && isDateInTerm(q.date, termSelection, config));
 }
 
 /**
@@ -86,7 +86,7 @@ export function filterHomeworksByTerm(
   config: AcademicYearConfig
 ): Homework[] {
   return homeworks.filter(
-    (hw) => isDateInTerm(hw.dueDate, termSelection, config) || isDateInTerm(hw.assignedDate, termSelection, config)
+    (hw) => !hw.isDeleted && (isDateInTerm(hw.dueDate, termSelection, config) || isDateInTerm(hw.assignedDate, termSelection, config))
   );
 }
 
@@ -113,7 +113,7 @@ export function filterNotebookControlsByTerm(
   termSelection: ActiveTermSelection,
   config: AcademicYearConfig
 ): NotebookControl[] {
-  return notebooks.filter((nb) => isDateInTerm(nb.date, termSelection, config));
+  return notebooks.filter((nb) => !nb.isDeleted && isDateInTerm(nb.date, termSelection, config));
 }
 
 /**
@@ -159,6 +159,57 @@ export function getTermDateRangeString(termSelection: ActiveTermSelection, confi
     return `${formatDate(config.term2.startDate)} - ${formatDate(config.term2.endDate)}`;
   }
   return `${formatDate(config.term1.startDate)} - ${formatDate(config.term2.endDate)}`;
+}
+
+/**
+ * Calculates the current academic week (1 to 36) dynamically based on academic calendar config and date
+ */
+export function getCurrentAcademicWeek(
+  config: AcademicYearConfig = DEFAULT_ACADEMIC_YEAR_CONFIG,
+  targetDate: Date = new Date()
+): number {
+  try {
+    const todayStr = targetDate.toISOString().slice(0, 10);
+    const t1Start = config.term1?.startDate || '2025-09-08';
+    const t1End = config.term1?.endDate || '2026-01-16';
+    const t2Start = config.term2?.startDate || '2026-02-02';
+    const t2End = config.term2?.endDate || '2026-06-19';
+
+    // If today is before 1st term start date
+    if (todayStr < t1Start) {
+      return 1;
+    }
+
+    // If today is after 2nd term end date
+    if (todayStr > t2End) {
+      return 36;
+    }
+
+    const todayMs = new Date(todayStr).getTime();
+    const t1StartMs = new Date(t1Start).getTime();
+    const t1EndMs = new Date(t1End).getTime();
+    const t2StartMs = new Date(t2Start).getTime();
+
+    // If today is in term 1
+    if (todayStr <= t1End) {
+      const diffDays = Math.floor((todayMs - t1StartMs) / (1000 * 60 * 60 * 24));
+      const week = Math.floor(diffDays / 7) + 1;
+      return Math.min(Math.max(week, 1), 18);
+    }
+
+    // If today is in semester break between term 1 and term 2
+    if (todayStr < t2Start) {
+      return 18;
+    }
+
+    // Today is in term 2
+    const diffDaysInTerm2 = Math.floor((todayMs - t2StartMs) / (1000 * 60 * 60 * 24));
+    const term2Week = Math.floor(diffDaysInTerm2 / 7) + 1;
+    const week = 18 + term2Week;
+    return Math.min(Math.max(week, 19), 36);
+  } catch (err) {
+    return 1;
+  }
 }
 
 /**

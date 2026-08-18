@@ -5,19 +5,34 @@ import {
 } from '../types';
 import { playScoreSound } from '../utils/audio';
 import { StudentDetailModal } from './StudentDetailModal';
-import { Plus, Minus, Search, Sparkles, Dices, ExternalLink } from 'lucide-react';
+import { Plus, Minus, Search, Sparkles, Dices, ExternalLink, CheckSquare, Square, Users, Check } from 'lucide-react';
 
 interface QuickScoreViewProps {
   currentClass: ClassRoom;
   students: Student[];
   plusMinusLogs: PerformanceLog[];
   onAddLog: (log: Omit<PerformanceLog, 'id'>) => void;
+  onBatchAddLogs?: (
+    logs: Omit<PerformanceLog, 'id'>[],
+    studentDetails: {
+      studentId: string;
+      studentName: string;
+      studentNumber?: string;
+      type: 'plus' | 'minus';
+      category: PlusMinusCategory;
+      note?: string;
+    }[]
+  ) => void;
+  onUpdateLog?: (log: PerformanceLog) => void;
   onDeleteLog: (id: string) => void;
   onOpenLuckyDraw?: () => void;
   quizzes?: QuizScore[];
   homeworks?: Homework[];
   homeworkRecords?: HomeworkRecord[];
   notebookControls?: NotebookControl[];
+  onSaveNotebookControl?: (control: Omit<NotebookControl, 'id'>) => void;
+  onUpdateNotebookControl?: (control: NotebookControl) => void;
+  onDeleteNotebookControl?: (id: string) => void;
   weights?: WeightSettings;
 }
 
@@ -35,18 +50,26 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
   students,
   plusMinusLogs,
   onAddLog,
+  onBatchAddLogs,
+  onUpdateLog,
   onDeleteLog,
   onOpenLuckyDraw,
   quizzes = [],
   homeworks = [],
   homeworkRecords = [],
   notebookControls = [],
+  onSaveNotebookControl,
+  onUpdateNotebookControl,
+  onDeleteNotebookControl,
   weights = { homeworkPercent: 30, quizPercent: 40, notebookPercent: 15, plusMinusPercent: 15 },
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<PlusMinusCategory>('Ders Katılımı');
   const [noteInput, setNoteInput] = useState('');
   const [selectedStudentForModal, setSelectedStudentForModal] = useState<Student | null>(null);
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [bulkFeedback, setBulkFeedback] = useState<string | null>(null);
 
   const filteredStudents = students
     .filter((s) => s.classId === currentClass.id)
@@ -56,6 +79,8 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
         s.surname.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.number.includes(searchTerm)
     );
+
+  const classStudents = students.filter((s) => s.classId === currentClass.id);
 
   const handleScore = (studentId: string, type: 'plus' | 'minus') => {
     playScoreSound(type);
@@ -74,8 +99,59 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
     setNoteInput('');
   };
 
+  const handleToggleSelectAll = () => {
+    if (selectedStudentIds.length === classStudents.length) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(classStudents.map((s) => s.id));
+    }
+  };
+
+  const handleToggleSelectStudent = (id: string) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(id) ? prev.filter((sId) => sId !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkScore = (type: 'plus' | 'minus') => {
+    const targetStudents = classStudents.filter((s) => selectedStudentIds.includes(s.id));
+    if (targetStudents.length === 0) return;
+
+    playScoreSound(type);
+    const today = new Date().toISOString().slice(0, 10);
+    const logsToCreate: Omit<PerformanceLog, 'id'>[] = targetStudents.map((std) => ({
+      studentId: std.id,
+      classId: currentClass.id,
+      date: today,
+      type,
+      category: selectedCategory,
+      note: noteInput.trim() ? noteInput.trim() : undefined,
+    }));
+
+    const details = targetStudents.map((std) => ({
+      studentId: std.id,
+      studentName: `${std.name} ${std.surname}`,
+      studentNumber: std.number,
+      type,
+      category: selectedCategory,
+      note: noteInput.trim() ? noteInput.trim() : undefined,
+    }));
+
+    if (onBatchAddLogs) {
+      onBatchAddLogs(logsToCreate, details);
+    } else {
+      logsToCreate.forEach((l) => onAddLog(l));
+    }
+
+    setBulkFeedback(
+      `${targetStudents.length} öğrenciye toplu "${selectedCategory}" ${type === 'plus' ? 'Artı (+1)' : 'Eksi (-1)'} kaydedildi.`
+    );
+    setNoteInput('');
+    setTimeout(() => setBulkFeedback(null), 4000);
+  };
+
   const getStudentPlusMinusCount = (studentId: string) => {
-    const logs = plusMinusLogs.filter((l) => l.studentId === studentId);
+    const logs = plusMinusLogs.filter((l) => l.studentId === studentId && !l.isDeleted);
     const plus = logs.filter((l) => l.type === 'plus').length;
     const minus = logs.filter((l) => l.type === 'minus').length;
     return { plus, minus, total: plus - minus };
@@ -132,6 +208,29 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
             className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs font-medium"
           />
         </div>
+
+        {/* Bulk Scoring Mode Toggle */}
+        <button
+          type="button"
+          onClick={() => {
+            if (!isBulkMode) {
+              setSelectedStudentIds(classStudents.map((s) => s.id));
+            } else {
+              setSelectedStudentIds([]);
+            }
+            setIsBulkMode(!isBulkMode);
+          }}
+          className={`px-3 py-2 rounded-xl text-xs font-black shrink-0 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
+            isBulkMode
+              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 ring-2 ring-amber-400/40'
+              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          }`}
+          title="Tüm sınıfa veya seçilen öğrencilere toplu puan ver"
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Toplu Puanla</span>
+        </button>
+
         {onOpenLuckyDraw && (
           <button
             onClick={onOpenLuckyDraw}
@@ -147,6 +246,55 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
           <span className="text-slate-400 font-normal">Öğrenci</span>
         </div>
       </div>
+
+      {/* Bulk Action Controls Bar (When active) */}
+      {isBulkMode && (
+        <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 animate-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className="text-xs font-black text-amber-900 flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              {selectedStudentIds.length === classStudents.length ? (
+                <CheckSquare className="w-4 h-4 text-amber-700" />
+              ) : (
+                <Square className="w-4 h-4 text-amber-700" />
+              )}
+              {selectedStudentIds.length === classStudents.length ? 'Tüm Seçimi Kaldır' : 'Tümünü Seç'}
+            </button>
+            <span className="text-xs font-bold text-amber-800">
+              {selectedStudentIds.length} / {classStudents.length} Öğrenci Seçili
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={selectedStudentIds.length === 0}
+              onClick={() => handleBulkScore('plus')}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-black rounded-xl shadow-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" /> Seçilenlere +1
+            </button>
+            <button
+              type="button"
+              disabled={selectedStudentIds.length === 0}
+              onClick={() => handleBulkScore('minus')}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-black rounded-xl shadow-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+            >
+              <Minus className="w-4 h-4 stroke-[3]" /> Seçilenlere -1
+            </button>
+          </div>
+        </div>
+      )}
+
+      {bulkFeedback && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
+          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{bulkFeedback}</span>
+        </div>
+      )}
 
       {/* Student Cards List */}
       <div className="space-y-2.5">
@@ -164,6 +312,24 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
                 className="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs transition-all hover:border-slate-300"
               >
                 <div className="flex items-center justify-between gap-3">
+                  {/* Checkbox in bulk mode */}
+                  {isBulkMode && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleSelectStudent(student.id);
+                      }}
+                      className="p-1 text-amber-700 hover:text-amber-900 transition-colors cursor-pointer shrink-0"
+                    >
+                      {selectedStudentIds.includes(student.id) ? (
+                        <CheckSquare className="w-5 h-5 text-amber-600 fill-amber-100" />
+                      ) : (
+                        <Square className="w-5 h-5 text-slate-300" />
+                      )}
+                    </button>
+                  )}
+
                   {/* Clickable Student Info: Avatar + Name + Badges */}
                   <button
                     type="button"
@@ -252,6 +418,12 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
         notebookControls={notebookControls}
         weights={weights}
         initialTab="plusminus"
+        onAddPlusMinusLog={onAddLog}
+        onUpdatePlusMinusLog={onUpdateLog}
+        onDeletePlusMinusLog={onDeleteLog}
+        onAddNotebookControl={onSaveNotebookControl}
+        onUpdateNotebookControl={onUpdateNotebookControl}
+        onDeleteNotebookControl={onDeleteNotebookControl}
       />
     </div>
   );

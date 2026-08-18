@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Student, NotebookControl, ClassRoom, NotebookStatus, 
   PerformanceLog, QuizScore, Homework, HomeworkRecord, WeightSettings 
@@ -15,7 +15,26 @@ interface NotebookViewProps {
   students: Student[];
   notebookControls: NotebookControl[];
   onSaveNotebookControl: (control: Omit<NotebookControl, 'id'>) => void;
+  onUpdateNotebookControl?: (control: NotebookControl) => void;
+  onDeleteNotebookControl?: (id: string) => void;
+  onBatchSaveNotebookControls?: (
+    controls: {
+      studentId: string;
+      studentName: string;
+      studentNumber?: string;
+      status: NotebookStatus;
+      percentage: number;
+      note?: string;
+      existingId?: string;
+    }[],
+    date: string,
+    classId: string,
+    className: string
+  ) => void;
   plusMinusLogs?: PerformanceLog[];
+  onAddLog?: (log: Omit<PerformanceLog, 'id'>) => void;
+  onUpdateLog?: (log: PerformanceLog) => void;
+  onDeleteLog?: (id: string) => void;
   quizzes?: QuizScore[];
   homeworks?: Homework[];
   homeworkRecords?: HomeworkRecord[];
@@ -34,7 +53,13 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   students,
   notebookControls,
   onSaveNotebookControl,
+  onUpdateNotebookControl,
+  onDeleteNotebookControl,
+  onBatchSaveNotebookControls,
   plusMinusLogs = [],
+  onAddLog,
+  onUpdateLog,
+  onDeleteLog,
   quizzes = [],
   homeworks = [],
   homeworkRecords = [],
@@ -47,6 +72,37 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   const [localValues, setLocalValues] = useState<{
     [studentId: string]: StudentNotebookState;
   }>({});
+
+  // When date changes, check if there are already records for this date and preload them
+  useEffect(() => {
+    const existingForDate = notebookControls.filter(
+      (n) => n.classId === currentClass.id && n.date === date && !n.isDeleted
+    );
+    if (existingForDate.length > 0) {
+      const newVals: { [id: string]: StudentNotebookState } = {};
+      classStudents.forEach((std) => {
+        const rec = existingForDate.find((n) => n.studentId === std.id);
+        if (rec) {
+          newVals[std.id] = {
+            isAbsent: false,
+            percentage: rec.percentage,
+            status: rec.status,
+            note: rec.note || '',
+          };
+        } else {
+          newVals[std.id] = {
+            isAbsent: true,
+            percentage: 100,
+            status: 'full',
+            note: '',
+          };
+        }
+      });
+      setLocalValues(newVals);
+    } else {
+      setLocalValues({});
+    }
+  }, [date, currentClass.id, notebookControls.length]);
 
   // Selected student for viewing full history / report card
   const [selectedStudentForModal, setSelectedStudentForModal] = useState<Student | null>(null);
@@ -165,20 +221,52 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
       return;
     }
 
-    evaluatedStudents.forEach((std) => {
-      const val = getStudentValue(std.id);
-      const payload: Omit<NotebookControl, 'id'> = {
-        studentId: std.id,
-        classId: currentClass.id,
-        date: date,
-        status: val.status,
-        percentage: val.percentage,
-      };
-      if (val.note.trim()) {
-        payload.note = val.note.trim();
-      }
-      onSaveNotebookControl(payload);
-    });
+    if (onBatchSaveNotebookControls) {
+      const batchData = evaluatedStudents.map((std) => {
+        const val = getStudentValue(std.id);
+        const existing = notebookControls.find(
+          (n) => n.studentId === std.id && n.classId === currentClass.id && n.date === date && !n.isDeleted
+        );
+        return {
+          studentId: std.id,
+          studentName: `${std.name} ${std.surname}`,
+          studentNumber: std.number,
+          status: val.status,
+          percentage: val.percentage,
+          note: val.note.trim() || undefined,
+          existingId: existing?.id,
+        };
+      });
+      onBatchSaveNotebookControls(batchData, date, currentClass.id, currentClass.name);
+    } else {
+      evaluatedStudents.forEach((std) => {
+        const val = getStudentValue(std.id);
+        const existing = notebookControls.find(
+          (n) => n.studentId === std.id && n.classId === currentClass.id && n.date === date && !n.isDeleted
+        );
+
+        if (existing && onUpdateNotebookControl) {
+          onUpdateNotebookControl({
+            ...existing,
+            status: val.status,
+            percentage: val.percentage,
+            note: val.note.trim() || undefined,
+          });
+        } else {
+          const payload: Omit<NotebookControl, 'id'> = {
+            studentId: std.id,
+            classId: currentClass.id,
+            date: date,
+            status: val.status,
+            percentage: val.percentage,
+          };
+          if (val.note.trim()) {
+            payload.note = val.note.trim();
+          }
+          onSaveNotebookControl(payload);
+        }
+      });
+    }
 
     setSaveFeedback({
       type: 'success',
@@ -193,6 +281,9 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
 
   const evaluatedCount = classStudents.filter((s) => !getStudentValue(s.id).isAbsent).length;
   const absentCount = classStudents.length - evaluatedCount;
+  const existingCountOnDate = notebookControls.filter(
+    (n) => n.classId === currentClass.id && n.date === date && !n.isDeleted
+  ).length;
 
   return (
     <div className="space-y-4 pb-24 animate-in fade-in duration-200">
@@ -237,6 +328,11 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
               onChange={(e) => setDate(e.target.value)}
               className="text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-slate-800"
             />
+            {existingCountOnDate > 0 && (
+              <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                <CheckCircle className="w-3 h-3 text-amber-600" /> Kayıtlı Veri ({existingCountOnDate})
+              </span>
+            )}
           </div>
 
           {/* Quick Bulk Actions */}
@@ -492,6 +588,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
         notebookControls={notebookControls}
         weights={weights}
         initialTab="notebook"
+        onAddNotebookControl={onSaveNotebookControl}
+        onUpdateNotebookControl={onUpdateNotebookControl}
+        onDeleteNotebookControl={onDeleteNotebookControl}
+        onAddPlusMinusLog={onAddLog}
+        onUpdatePlusMinusLog={onUpdateLog}
+        onDeletePlusMinusLog={onDeleteLog}
       />
 
       {/* In-App Save Feedback Modal / Toast Notification */}

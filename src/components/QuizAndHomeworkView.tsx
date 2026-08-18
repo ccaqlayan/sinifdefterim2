@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Student, Quiz, QuizScore, Homework, HomeworkRecord, ClassRoom, HomeworkStatus } from '../types';
+import { Student, Quiz, QuizScore, Homework, HomeworkRecord, ClassRoom, HomeworkStatus, User as UserType, AcademicYearConfig } from '../types';
+import { getHomeworkDueDateTimestamp } from '../utils/homeworkUrgencyUtils';
+import { HomeworkChecklistModal } from './HomeworkChecklistModal';
 import { 
   Award, BookOpen, Plus, Sparkles, Clock, Check, X, Wand2, 
   Edit3, Trash2, AlertTriangle, CheckCircle2, AlertCircle,
   Calendar, User, FileText, RefreshCw, RotateCcw, Flame, ShieldAlert,
-  Save, BarChart2, Hash
+  Save, BarChart2, Hash, Printer, FileSpreadsheet, Download
 } from 'lucide-react';
 
 interface QuizAndHomeworkViewProps {
@@ -15,7 +17,11 @@ interface QuizAndHomeworkViewProps {
   homeworks: Homework[];
   homeworkRecords: HomeworkRecord[];
   initialSubTab?: 'quizzes' | 'homeworks';
+  initialHomeworkId?: string;
+  initialQuizId?: string;
   hideSubTabs?: boolean;
+  currentUser?: UserType;
+  academicYearConfig?: AcademicYearConfig;
   onAddQuizDefinition: (quiz: Omit<Quiz, 'id'>) => Quiz;
   onUpdateQuizDefinition: (quiz: Quiz) => void;
   onSoftDeleteQuizDefinition: (quizId: string) => void;
@@ -40,7 +46,11 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
   homeworks,
   homeworkRecords,
   initialSubTab = 'quizzes',
+  initialHomeworkId,
+  initialQuizId,
   hideSubTabs = false,
+  currentUser,
+  academicYearConfig,
   onAddQuizDefinition,
   onUpdateQuizDefinition,
   onSoftDeleteQuizDefinition,
@@ -57,6 +67,7 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
   onBatchUpdateHomeworkRecords,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'quizzes' | 'homeworks' | 'trash'>(initialSubTab);
+  const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -70,8 +81,12 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
   const classQuizDefs = quizDefinitions.filter((q) => q.classId === currentClass.id && !q.isDeleted);
   const [selectedQuizId, setSelectedQuizId] = useState<string>(classQuizDefs[0]?.id || '');
 
-  // Keep selected quiz synced if list changes
+  // Keep selected quiz synced if list or initialQuizId changes
   useEffect(() => {
+    if (initialQuizId && classQuizDefs.some((q) => q.id === initialQuizId)) {
+      setSelectedQuizId(initialQuizId);
+      return;
+    }
     if (classQuizDefs.length > 0) {
       if (!classQuizDefs.some((q) => q.id === selectedQuizId)) {
         setSelectedQuizId(classQuizDefs[0].id);
@@ -79,7 +94,7 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
     } else {
       setSelectedQuizId('');
     }
-  }, [quizDefinitions, currentClass.id]);
+  }, [quizDefinitions, currentClass.id, initialQuizId]);
 
   const activeQuiz = classQuizDefs.find((q) => q.id === selectedQuizId) || classQuizDefs[0];
 
@@ -135,7 +150,12 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
   const classHomeworks = homeworks.filter((h) => h.classId === currentClass.id && !h.isDeleted);
   const [selectedHwId, setSelectedHwId] = useState<string>(classHomeworks[0]?.id || '');
 
+  // Keep selected homework synced if list or initialHomeworkId changes
   useEffect(() => {
+    if (initialHomeworkId && classHomeworks.some((h) => h.id === initialHomeworkId)) {
+      setSelectedHwId(initialHomeworkId);
+      return;
+    }
     if (classHomeworks.length > 0) {
       if (!classHomeworks.some((h) => h.id === selectedHwId)) {
         setSelectedHwId(classHomeworks[0].id);
@@ -143,7 +163,7 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
     } else {
       setSelectedHwId('');
     }
-  }, [homeworks, currentClass.id]);
+  }, [homeworks, currentClass.id, initialHomeworkId]);
 
   const activeHW = classHomeworks.find((h) => h.id === selectedHwId) || classHomeworks[0];
 
@@ -497,14 +517,29 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
             )}
 
             {activeSubTab === 'homeworks' && (
-              <button
-                onClick={() => setIsAddHWOpen(true)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Yeni Ödev Ver</span>
-                <span className="sm:hidden">Yeni Ödev</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="btn-open-checklist-modal"
+                  onClick={() => setIsChecklistModalOpen(true)}
+                  className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer border border-slate-700"
+                  title="A4 formatında yazdırılabilir veya indirilebilir ödev kontrol çizelgesi oluştur"
+                >
+                  <Printer className="w-4 h-4 text-emerald-400" />
+                  <span className="hidden sm:inline">Kontrol Listesi Yazdır</span>
+                  <span className="sm:hidden">Çizelge Yazdır</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAddHWOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Yeni Ödev Ver</span>
+                  <span className="sm:hidden">Yeni Ödev</span>
+                </button>
+              </div>
             )}
           </div>
       </div>
@@ -805,6 +840,12 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
                   const recs = homeworkRecords.filter((r) => r.homeworkId === hw.id);
                   const completedCount = recs.filter((r) => r.status === 'completed').length;
 
+                  // 24-hour urgency calculation
+                  const dueMs = getHomeworkDueDateTimestamp(hw.dueDate);
+                  const diffMs = dueMs - Date.now();
+                  const isUrgent24h = diffMs > 0 && diffMs <= 24 * 3600 * 1000;
+                  const isOverdueToday = diffMs <= 0 && diffMs >= -12 * 3600 * 1000;
+
                   return (
                     <div
                       key={hw.id}
@@ -812,15 +853,20 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
                       className={`min-w-[240px] p-3 rounded-2xl border transition-all cursor-pointer relative group flex flex-col justify-between ${
                         isSelected
                           ? 'bg-emerald-900 text-white border-emerald-700 shadow-md scale-[1.02]'
+                          : isUrgent24h || isOverdueToday
+                          ? 'bg-rose-50/90 hover:bg-rose-100/90 text-slate-800 border-rose-300 ring-2 ring-rose-400/50'
                           : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200'
                       }`}
                     >
                       <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                            isSelected ? 'bg-emerald-800 text-emerald-100' : 'bg-slate-100 text-slate-600'
+                        <div className="flex items-center justify-between mb-1 gap-1">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                            isUrgent24h || isOverdueToday
+                              ? 'bg-rose-600 text-white font-black animate-pulse'
+                              : isSelected ? 'bg-emerald-800 text-emerald-100' : 'bg-slate-100 text-slate-600'
                           }`}>
-                            Son: {hw.dueDate}
+                            {(isUrgent24h || isOverdueToday) && <Flame className="w-3 h-3 text-amber-300" />}
+                            {isOverdueToday ? 'Bugün Süresi Doldu' : isUrgent24h ? 'Son 24 Saat!' : `Son: ${hw.dueDate}`}
                           </span>
                           <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
                             <button
@@ -1939,6 +1985,18 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Homework Checklist Print & Export Modal */}
+      <HomeworkChecklistModal
+        isOpen={isChecklistModalOpen}
+        onClose={() => setIsChecklistModalOpen(false)}
+        currentClass={currentClass}
+        students={students}
+        homeworks={homeworks}
+        homeworkRecords={homeworkRecords}
+        currentUser={currentUser}
+        academicYearConfig={academicYearConfig}
+      />
     </div>
   );
 };

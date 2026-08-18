@@ -12,9 +12,13 @@ import {
   AcademicYearConfig,
   Quiz,
   Homework,
+  NotificationSettingsConfig,
+  DashboardLayoutConfig,
 } from '../types';
 import { calculateStudentOverallScore } from '../utils/calculations';
 import { filterLogsByTerm, filterQuizScoresByTerm, filterNotebookControlsByTerm, getTermLabel } from '../utils/termUtils';
+import { getAllDashboardAlerts } from '../utils/dashboardAlertsUtils';
+import { DEFAULT_NOTIFICATION_CONFIG } from '../mockData';
 import {
   MessageSquare,
   Sparkles,
@@ -30,6 +34,7 @@ import {
   Layers,
   History,
   Sliders,
+  SlidersHorizontal,
   Search,
   Filter,
   Check,
@@ -44,6 +49,16 @@ import {
   Flame,
   X,
   AlertTriangle,
+  Footprints,
+  ShieldAlert,
+  Volume2,
+  VolumeX,
+  BookOpen,
+  FileCheck2,
+  LayoutDashboard,
+  Maximize2,
+  Minimize2,
+  Monitor,
 } from 'lucide-react';
 
 interface FeedbackViewProps {
@@ -68,6 +83,12 @@ interface FeedbackViewProps {
   onOpenAcademicSettings?: () => void;
   onNavigateTab?: (tab: string) => void;
   onOpenAddClassModal?: () => void;
+  auditLogsCount?: number;
+  notificationConfig?: NotificationSettingsConfig;
+  onUpdateNotificationConfig?: (config: NotificationSettingsConfig) => void;
+  onOpenNotificationSettings?: () => void;
+  dashboardLayout?: DashboardLayoutConfig;
+  onOpenDashboardCustomize?: () => void;
 }
 
 export const FeedbackView: React.FC<FeedbackViewProps> = ({
@@ -92,6 +113,12 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
   onOpenAcademicSettings,
   onNavigateTab,
   onOpenAddClassModal,
+  auditLogsCount = 0,
+  notificationConfig = DEFAULT_NOTIFICATION_CONFIG,
+  onUpdateNotificationConfig,
+  onOpenNotificationSettings,
+  dashboardLayout,
+  onOpenDashboardCustomize,
 }) => {
   const classStudents = currentClass ? students.filter((s) => s.classId === currentClass.id) : [];
 
@@ -106,24 +133,96 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
   const [historyChannelFilter, setHistoryChannelFilter] = useState<'all' | 'whatsapp' | 'sms' | 'email'>('all');
 
   // Unified Sub-tab selector & Collapsible state
-  const [activeSubTab, setActiveSubTab] = useState<'message' | 'rules' | 'history'>('message');
+  const [activeSubTab, setActiveSubTab] = useState<'message' | 'alerts' | 'rules' | 'history'>('message');
   const [isCommunicationOpen, setIsCommunicationOpen] = useState(false);
 
-  // Trash Bin State
-  const [isTrashOpen, setIsTrashOpen] = useState(false);
-  const [trashSubTab, setTrashSubTab] = useState<'quizzes' | 'homeworks'>('quizzes');
-  const [permDeleteTarget, setPermDeleteTarget] = useState<{
-    type: 'quiz' | 'hw';
-    item: Quiz | Homework;
-  } | null>(null);
+  // Fullscreen state & controller
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    if (typeof document === 'undefined') return false;
+    return Boolean(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement
+    );
+  });
 
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(
+        Boolean(
+          document.fullscreenElement ||
+          (document as any).webkitFullscreenElement ||
+          (document as any).mozFullScreenElement ||
+          (document as any).msFullscreenElement
+        )
+      );
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleToggleFullscreen = async () => {
+    try {
+      const doc = document as any;
+      const isCurrentlyFull = Boolean(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      );
+
+      if (!isCurrentlyFull) {
+        const elem = document.documentElement as any;
+        if (elem.requestFullscreen) {
+          await elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          await elem.webkitRequestFullscreen();
+        } else if (elem.mozRequestFullScreen) {
+          await elem.mozRequestFullScreen();
+        } else if (elem.msRequestFullscreen) {
+          await elem.msRequestFullscreen();
+        }
+      } else {
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (doc.mozCancelFullScreen) {
+          await doc.mozCancelFullScreen();
+        } else if (doc.msExitFullscreen) {
+          await doc.msExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Tam ekran geçişinde bir sorun oluştu:', err);
+    }
+  };
+
+  const deletedNotebooks = notebookControls.filter(
+    (n) => n.isDeleted && (!currentClass || n.classId === currentClass.id)
+  );
+  const deletedPlusMinus = plusMinusLogs.filter(
+    (p) => p.isDeleted && (!currentClass || p.classId === currentClass.id)
+  );
   const deletedQuizDefs = quizDefinitions.filter(
     (q) => q.isDeleted && (!currentClass || q.classId === currentClass.id)
   );
   const deletedHomeworks = homeworks.filter(
     (hw) => hw.isDeleted && (!currentClass || hw.classId === currentClass.id)
   );
-  const totalDeletedCount = deletedQuizDefs.length + deletedHomeworks.length;
+  const totalDeletedCount =
+    deletedNotebooks.length + deletedPlusMinus.length + deletedQuizDefs.length + deletedHomeworks.length;
 
   const selectedStudent = students.find((s) => s.id === selectedStudentId) || classStudents[0];
 
@@ -232,10 +331,122 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
     return matchesSearch && matchesChannel;
   });
 
+  const activeWidgetCount = dashboardLayout?.widgets?.filter((w) => w.enabled)?.length ?? 8;
+  const totalWidgetCount = dashboardLayout?.widgets?.length ?? 8;
+
   return (
     <div className="space-y-4 pb-24 animate-in fade-in duration-200">
+      {/* 🚀 En Üst Kutucuk: Anasayfayı Özelleştir */}
+      {onOpenDashboardCustomize && (
+        <div 
+          id="btn-settings-customize-dashboard"
+          onClick={onOpenDashboardCustomize}
+          className="bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-900 text-white p-4 sm:p-5 rounded-3xl shadow-lg border border-indigo-500/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden group cursor-pointer hover:border-indigo-400/80 transition-all"
+        >
+          <div className="absolute -right-8 -bottom-8 w-36 h-36 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/30 transition-all"></div>
+          
+          <div className="flex items-center gap-3.5 min-w-0 z-10">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 border border-indigo-400/40 flex items-center justify-center text-white shadow-md ring-2 ring-indigo-400/20 group-hover:scale-105 transition-transform shrink-0">
+              <SlidersHorizontal className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-black text-white tracking-tight">
+                  Anasayfayı Özelleştir
+                </h3>
+                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/40">
+                  {activeWidgetCount}/{totalWidgetCount} Kart Aktif
+                </span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" /> Kişisel Düzen
+                </span>
+              </div>
+              <p className="text-xs text-indigo-200/90 mt-0.5">
+                Anasayfadaki her kutucuğu açıp kapatın, yukarı-aşağı oklarla sırasını değiştirin.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDashboardCustomize();
+            }}
+            className="self-stretch sm:self-auto px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs sm:text-sm font-black rounded-xl transition-all shrink-0 flex items-center justify-center gap-2 shadow-md border border-indigo-400/30 cursor-pointer z-10 active:scale-98"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Özelleştir</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Top Navigation & Action Boxes (Max 2 cols on tablet/desktop, 1 col on mobile) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5">
+        {/* Box 0: Tam Ekran Modu (Projeksiyon & Akıllı Tahta) */}
+        <div 
+          id="card-fullscreen-toggle"
+          onClick={handleToggleFullscreen}
+          className={`p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border transition-all cursor-pointer ${
+            isFullscreen
+              ? 'bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 text-white border-emerald-500/50 hover:border-emerald-400/80 ring-2 ring-emerald-500/20'
+              : 'bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-indigo-500/30 hover:border-indigo-400/60 hover:ring-2 hover:ring-indigo-500/20'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs transition-transform ${
+              isFullscreen 
+                ? 'bg-emerald-500 text-slate-950 border-emerald-300' 
+                : 'bg-indigo-600/50 text-indigo-200 border-indigo-400/30'
+            }`}>
+              {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-xs sm:text-sm font-black truncate text-white">Tam Ekran Modu</h4>
+                <span className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
+                  isFullscreen 
+                    ? 'bg-emerald-400 text-slate-950' 
+                    : 'bg-indigo-500/40 text-indigo-200 border border-indigo-400/30'
+                }`}>
+                  {isFullscreen ? '🟢 Tam Ekran Aktif' : 'Akıllı Tahta / Projeksiyon'}
+                </span>
+              </div>
+              <p className="text-[11px] text-indigo-200/90 truncate mt-0.5">
+                {isFullscreen
+                  ? 'Uygulama tam ekranda çalışıyor. Çıkmak için butona veya ESC tuşuna basın.'
+                  : 'Tarayıcı çubuklarını gizleyerek uygulamayı tüm ekrana genişletin'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            id="btn-toggle-fullscreen"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleFullscreen();
+            }}
+            className={`px-3 py-1.5 text-[11px] font-black rounded-xl transition-all shrink-0 flex items-center gap-1.5 shadow-md cursor-pointer active:scale-95 ${
+              isFullscreen
+                ? 'bg-rose-600 hover:bg-rose-500 text-white border border-rose-400/40'
+                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+            }`}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span>Tam Ekrandan Çık</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Tam Ekran Yap</span>
+              </>
+            )}
+          </button>
+        </div>
+
         {/* Box 1: Raporlar ve Karne Notları (En Üstte) */}
         {onNavigateTab && (
           <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border border-purple-500/40">
@@ -338,29 +549,142 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
         )}
 
         {/* Box 5: Çöp Kutusu & Geri Yükleme */}
+        {onNavigateTab && (
+          <div 
+            onClick={() => onNavigateTab('trash')}
+            className="bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border border-rose-500/30 hover:border-rose-400/60 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/30 border border-rose-400/40 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-300" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-black truncate text-white">Çöp Kutusu & Geri Yükleme</h4>
+                  {totalDeletedCount > 0 && (
+                    <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
+                      {totalDeletedCount}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-rose-200/90 truncate mt-0.5">
+                  Silinen defter, artı/eksi, quiz ve ödevleri incele, geri getir
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigateTab('trash');
+              }}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black rounded-xl transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              İncele <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Box 6: Ayak İzi & Öğretmen İşlem Günlüğü */}
+        {onNavigateTab && (
+          <div 
+            onClick={() => onNavigateTab('footprint')}
+            className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border border-indigo-500/30 hover:border-indigo-400/60 hover:ring-2 hover:ring-indigo-500/20 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 border border-amber-300 flex items-center justify-center shrink-0 shadow-2xs">
+                <Footprints className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-black truncate text-white">Ayak İzi</h4>
+                  {auditLogsCount > 0 && (
+                    <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">
+                      {auditLogsCount}
+                    </span>
+                  )}
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-indigo-500/40 text-indigo-200 border border-indigo-400/30">
+                    Denetim Günlüğü
+                  </span>
+                </div>
+                <p className="text-[11px] text-indigo-200/90 truncate mt-0.5">
+                  Öğretmenin yaptığı tüm işlem, toplu kayıt ve düzenleme geçmişi
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigateTab('footprint');
+              }}
+              className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-black rounded-xl transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              İncele <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Box 7: Riskli Öğrenci Alarmı & Erken Müdahale Radarı */}
+        {onNavigateTab && (
+          <div 
+            onClick={() => onNavigateTab('risk-radar')}
+            className="bg-gradient-to-r from-rose-950 via-slate-950 to-indigo-950 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border border-rose-500/40 hover:border-rose-400/70 hover:ring-2 hover:ring-rose-500/30 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-rose-500 text-white border border-rose-400 flex items-center justify-center shrink-0 shadow-2xs">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-black truncate text-white">Riskli Öğrenci Alarmı</h4>
+                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-rose-500 text-white border border-rose-400">
+                    Erken Uyarı
+                  </span>
+                </div>
+                <p className="text-[11px] text-rose-200/90 truncate mt-0.5">
+                  Son 3 haftada performansı veya ödev tamamlama oranı %50'nin altına düşen öğrenciler
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigateTab('risk-radar');
+              }}
+              className="px-3 py-1.5 bg-rose-500 hover:bg-rose-400 text-white text-[11px] font-black rounded-xl transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              Radarı Aç <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Box 8: Bildirim & Uyarı Ayarları (Ödev, Quiz, Defter Gün Eşikleri) */}
         <div 
-          onClick={() => setIsTrashOpen(!isTrashOpen)}
-          className={`p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border transition-all cursor-pointer ${
-            isTrashOpen 
-              ? 'bg-gradient-to-r from-rose-950 via-slate-900 to-rose-950 text-white border-rose-500/50 ring-2 ring-rose-500/30' 
-              : 'bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 text-white border-rose-500/30 hover:border-rose-400/60'
-          }`}
+          onClick={() => {
+            if (onOpenNotificationSettings) {
+              onOpenNotificationSettings();
+            } else {
+              setIsCommunicationOpen(true);
+              setActiveSubTab('alerts');
+            }
+          }}
+          className="bg-gradient-to-r from-slate-950 via-amber-950/80 to-slate-900 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border border-amber-500/30 hover:border-amber-400/60 hover:ring-2 hover:ring-amber-500/20 transition-all cursor-pointer"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-rose-500/30 border border-rose-400/40 flex items-center justify-center shrink-0">
-              <Trash2 className="w-5 h-5 text-rose-300" />
+            <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 border border-amber-300 flex items-center justify-center shrink-0 shadow-2xs">
+              <Bell className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h4 className="text-xs sm:text-sm font-black truncate text-white">Çöp Kutusu & Geri Yükleme</h4>
-                {totalDeletedCount > 0 && (
-                  <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                    {totalDeletedCount}
-                  </span>
-                )}
+                <h4 className="text-xs sm:text-sm font-black truncate text-white">Bildirim & Uyarı Ayarları</h4>
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-400 text-slate-950">
+                  Gün Eşikleri
+                </span>
               </div>
-              <p className="text-[11px] text-rose-200/90 truncate mt-0.5">
-                Silinen quiz ve ödevleri incele, geri getir
+              <p className="text-[11px] text-amber-200/90 truncate mt-0.5">
+                Ödev teslim (son 1-3 gün), notsuz quiz & defter kontrolü uyarıları
               </p>
             </div>
           </div>
@@ -368,19 +692,20 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setIsTrashOpen(!isTrashOpen);
+              if (onOpenNotificationSettings) {
+                onOpenNotificationSettings();
+              } else {
+                setIsCommunicationOpen(true);
+                setActiveSubTab('alerts');
+              }
             }}
-            className={`px-3 py-1.5 text-[11px] font-black rounded-xl transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer ${
-              isTrashOpen
-                ? 'bg-amber-400 hover:bg-amber-300 text-slate-950'
-                : 'bg-rose-600 hover:bg-rose-500 text-white'
-            }`}
+            className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-black rounded-xl transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
           >
-            {isTrashOpen ? 'Gizle' : 'İncele'} <ArrowRight className="w-3.5 h-3.5" />
+            Ayarla <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Box 6: Veli İletişim & Bildirim Merkezi (En Altta) */}
+        {/* Box 8: Veli İletişim & Bildirim Merkezi (En Altta) */}
         <div 
           onClick={() => setIsCommunicationOpen(!isCommunicationOpen)}
           className={`p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border transition-all cursor-pointer ${
@@ -417,212 +742,6 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
         </div>
       </div>
 
-      {/* Unified Trash Bin Panel (Shows when isTrashOpen is true) */}
-      {isTrashOpen && (
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-rose-200 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-black text-slate-800">Çöp Kutusu & Geri Yükleme</h3>
-                <p className="text-[11px] text-slate-500">
-                  Silinen quiz veya ödevler burada saklanır. İstediğiniz ögeyi geri getirebilir veya kalıcı olarak silebilirsiniz.
-                </p>
-              </div>
-            </div>
-
-            {/* Trash Sub-tabs */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs font-bold shrink-0 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setTrashSubTab('quizzes')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  trashSubTab === 'quizzes'
-                    ? 'bg-white text-indigo-700 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Silinen Quizler ({deletedQuizDefs.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setTrashSubTab('homeworks')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  trashSubTab === 'homeworks'
-                    ? 'bg-white text-indigo-700 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Silinen Ödevler ({deletedHomeworks.length})
-              </button>
-            </div>
-          </div>
-
-          {/* Deleted Quizzes List */}
-          {trashSubTab === 'quizzes' && (
-            <div>
-              {deletedQuizDefs.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 space-y-1.5">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-                  <p className="text-xs font-bold text-slate-600">Silinen Herhangi Bir Quiz Bulunmuyor</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {deletedQuizDefs.map((q) => (
-                    <div
-                      key={q.id}
-                      className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-100/80 transition-colors"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                            Silinmiş Quiz
-                          </span>
-                          <span className="text-xs text-slate-400">Sınav Tarihi: {q.date}</span>
-                        </div>
-                        <h4 className="font-bold text-sm text-slate-800 mt-1">{q.title}</h4>
-                        {q.description && <p className="text-xs text-slate-500">{q.description}</p>}
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {onRestoreQuizDefinition && (
-                          <button
-                            type="button"
-                            onClick={() => onRestoreQuizDefinition(q.id)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            Geri Getir
-                          </button>
-                        )}
-
-                        {onPermanentDeleteQuizDefinition && (
-                          <button
-                            type="button"
-                            onClick={() => setPermDeleteTarget({ type: 'quiz', item: q })}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
-                          >
-                            <Flame className="w-3.5 h-3.5" />
-                            Kalıcı Sil
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Deleted Homeworks List */}
-          {trashSubTab === 'homeworks' && (
-            <div>
-              {deletedHomeworks.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 space-y-1.5">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-                  <p className="text-xs font-bold text-slate-600">Silinen Herhangi Bir Ödev Bulunmuyor</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {deletedHomeworks.map((hw) => (
-                    <div
-                      key={hw.id}
-                      className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-100/80 transition-colors"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                            Silinmiş Ödev
-                          </span>
-                          <span className="text-xs text-slate-400">Son Teslim: {hw.dueDate}</span>
-                        </div>
-                        <h4 className="font-bold text-sm text-slate-800 mt-1">{hw.title}</h4>
-                        {hw.description && <p className="text-xs text-slate-500">{hw.description}</p>}
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {onRestoreHomework && (
-                          <button
-                            type="button"
-                            onClick={() => onRestoreHomework(hw.id)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            Geri Getir
-                          </button>
-                        )}
-
-                        {onPermanentDeleteHomework && (
-                          <button
-                            type="button"
-                            onClick={() => setPermDeleteTarget({ type: 'hw', item: hw })}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
-                          >
-                            <Flame className="w-3.5 h-3.5" />
-                            Kalıcı Sil
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Permanent Delete Modal */}
-      {permDeleteTarget && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 border-2 border-rose-600">
-            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
-              <h3 className="text-base font-black text-rose-600 flex items-center gap-2">
-                <Flame className="w-5 h-5 text-rose-600" />
-                Kalıcı Silme Onayı
-              </h3>
-              <button onClick={() => setPermDeleteTarget(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="bg-rose-50 p-3.5 rounded-2xl border border-rose-200 text-rose-900 text-xs space-y-1">
-              <p className="font-bold text-sm">🚨 DİKKAT: Bu İşlem Geri Alınamaz!</p>
-              <p>
-                <strong>"{permDeleteTarget.item.title}"</strong> {permDeleteTarget.type === 'quiz' ? 'quiz ve bağlı tüm puanlar' : 'ödev ve bağlı tüm kayıtlar'} veritabanından kalıcı olarak silinecektir.
-              </p>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setPermDeleteTarget(null)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (permDeleteTarget.type === 'quiz') {
-                    onPermanentDeleteQuizDefinition?.(permDeleteTarget.item.id);
-                  } else {
-                    onPermanentDeleteHomework?.(permDeleteTarget.item.id);
-                  }
-                  setPermDeleteTarget(null);
-                }}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Flame className="w-4 h-4" />
-                Komple Sil
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Unified Communication Center Panel (Shows when isCommunicationOpen is true) */}
       {isCommunicationOpen && (
         <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-indigo-200 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -657,8 +776,8 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
             </div>
           </div>
 
-        {/* The 3 Unified Sub-Tabs */}
-        <div className="bg-slate-100/90 p-1 rounded-xl flex gap-1 font-bold text-xs">
+        {/* The 4 Unified Sub-Tabs */}
+        <div className="bg-slate-100/90 p-1 rounded-xl flex flex-wrap sm:flex-nowrap gap-1 font-bold text-xs">
           <button
             onClick={() => setActiveSubTab('message')}
             className={`flex-1 py-2 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
@@ -672,16 +791,31 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveSubTab('rules')}
+            onClick={() => setActiveSubTab('alerts')}
             className={`flex-1 py-2 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
-              activeSubTab === 'rules'
+              activeSubTab === 'alerts'
                 ? 'bg-white text-amber-700 font-extrabold shadow-2xs border border-slate-200/80'
                 : 'text-slate-600 hover:text-slate-900 font-bold'
             }`}
           >
             <Bell className="w-4 h-4 text-amber-600" />
-            <span>Bildirim Kuralları</span>
-            <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full hidden sm:inline">
+            <span>Anasayfa & Uyarı Eşikleri</span>
+            <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full hidden sm:inline">
+              Gün Bazlı
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('rules')}
+            className={`flex-1 py-2 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center ${
+              activeSubTab === 'rules'
+                ? 'bg-white text-indigo-700 font-extrabold shadow-2xs border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900 font-bold'
+            }`}
+          >
+            <Sliders className="w-4 h-4 text-indigo-600" />
+            <span>Kritik Başarı Kuralları</span>
+            <span className="text-[9px] bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded-full hidden sm:inline">
               {notifications.filter((n) => n.enabled).length} Aktif
             </span>
           </button>
@@ -878,6 +1012,293 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* SUB-TAB: ANASAYFA & GÜN BAZLI UYARI EŞİKLERİ */}
+      {activeSubTab === 'alerts' && (
+        <div className="space-y-4 animate-in fade-in duration-150">
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 rounded-2xl border border-amber-200 shadow-2xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Bell className="w-4 h-4 text-amber-600" /> Anasayfa Bildirim & Gün Eşik Ayarları
+              </h3>
+              {onOpenNotificationSettings && (
+                <button
+                  type="button"
+                  onClick={onOpenNotificationSettings}
+                  className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold rounded-xl transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
+                >
+                  <Settings className="w-3.5 h-3.5" /> Detaylı Modal Aç
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-600">
+              Anasayfa panelinde teslim tarihi yaklaşan ödevler, sınavı üzerinden x gün geçmesine rağmen notu girilmemiş quizler ve kontrolünden x gün geçmiş defterler için otomatik uyarı eşiklerini gün bazında ayarlayın.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* 1. Ödev Teslim Eşiği */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800">Ödev Teslim Uyarısı</h4>
+                    <span className="text-[10px] text-slate-500">Son Gün Eşiği</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onUpdateNotificationConfig) {
+                      onUpdateNotificationConfig({
+                        ...notificationConfig,
+                        homeworkDeadlineEnabled: !notificationConfig.homeworkDeadlineEnabled,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full transition-all relative p-0.5 shrink-0 cursor-pointer ${
+                    notificationConfig.homeworkDeadlineEnabled ? 'bg-amber-500' : 'bg-slate-300'
+                  }`}
+                  title={notificationConfig.homeworkDeadlineEnabled ? 'Kapat' : 'Aç'}
+                >
+                  <div
+                    className={`w-4 h-4 bg-white rounded-full transition-all shadow-xs ${
+                      notificationConfig.homeworkDeadlineEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-600">Uyarı Başlama Zamanı:</label>
+                <div className="grid grid-cols-5 gap-1">
+                  {[1, 2, 3, 5, 7].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      disabled={!notificationConfig.homeworkDeadlineEnabled}
+                      onClick={() => {
+                        if (onUpdateNotificationConfig) {
+                          onUpdateNotificationConfig({
+                            ...notificationConfig,
+                            homeworkDeadlineDays: days,
+                          });
+                        }
+                      }}
+                      className={`py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        notificationConfig.homeworkDeadlineDays === days
+                          ? 'bg-amber-500 text-slate-950 shadow-2xs font-extrabold'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      } ${!notificationConfig.homeworkDeadlineEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      {days} Gün
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Teslim tarihine {notificationConfig.homeworkDeadlineDays} gün veya daha az kalan ödevler vurgulanır.
+                </p>
+              </div>
+            </div>
+
+            {/* 2. Quiz Not Girişi Uyarısı */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                    <FileCheck2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800">Quiz Not Girişi Uyarısı</h4>
+                    <span className="text-[10px] text-slate-500">Gecikme Eşiği</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onUpdateNotificationConfig) {
+                      onUpdateNotificationConfig({
+                        ...notificationConfig,
+                        quizUngradedAlertEnabled: !notificationConfig.quizUngradedAlertEnabled,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full transition-all relative p-0.5 shrink-0 cursor-pointer ${
+                    notificationConfig.quizUngradedAlertEnabled ? 'bg-indigo-600' : 'bg-slate-300'
+                  }`}
+                  title={notificationConfig.quizUngradedAlertEnabled ? 'Kapat' : 'Aç'}
+                >
+                  <div
+                    className={`w-4 h-4 bg-white rounded-full transition-all shadow-xs ${
+                      notificationConfig.quizUngradedAlertEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-600">Gecikme Süresi Eşiği:</label>
+                <div className="grid grid-cols-5 gap-1">
+                  {[1, 2, 3, 5, 7].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      disabled={!notificationConfig.quizUngradedAlertEnabled}
+                      onClick={() => {
+                        if (onUpdateNotificationConfig) {
+                          onUpdateNotificationConfig({
+                            ...notificationConfig,
+                            quizUngradedDays: days,
+                          });
+                        }
+                      }}
+                      className={`py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        notificationConfig.quizUngradedDays === days
+                          ? 'bg-indigo-600 text-white shadow-2xs font-extrabold'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      } ${!notificationConfig.quizUngradedAlertEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      {days} Gün
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Quiz tarihinden {notificationConfig.quizUngradedDays} gün sonra not girilmediyse uyarı verilir.
+                </p>
+              </div>
+            </div>
+
+            {/* 3. Defter Kontrolü Not Girişi Uyarısı */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800">Defter Not Girişi Uyarısı</h4>
+                    <span className="text-[10px] text-slate-500">Gecikme Eşiği</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onUpdateNotificationConfig) {
+                      onUpdateNotificationConfig({
+                        ...notificationConfig,
+                        notebookUngradedAlertEnabled: !notificationConfig.notebookUngradedAlertEnabled,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full transition-all relative p-0.5 shrink-0 cursor-pointer ${
+                    notificationConfig.notebookUngradedAlertEnabled ? 'bg-purple-600' : 'bg-slate-300'
+                  }`}
+                  title={notificationConfig.notebookUngradedAlertEnabled ? 'Kapat' : 'Aç'}
+                >
+                  <div
+                    className={`w-4 h-4 bg-white rounded-full transition-all shadow-xs ${
+                      notificationConfig.notebookUngradedAlertEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-600">Gecikme Süresi Eşiği:</label>
+                <div className="grid grid-cols-5 gap-1">
+                  {[1, 2, 3, 5, 7].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      disabled={!notificationConfig.notebookUngradedAlertEnabled}
+                      onClick={() => {
+                        if (onUpdateNotificationConfig) {
+                          onUpdateNotificationConfig({
+                            ...notificationConfig,
+                            notebookUngradedDays: days,
+                          });
+                        }
+                      }}
+                      className={`py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        notificationConfig.notebookUngradedDays === days
+                          ? 'bg-purple-600 text-white shadow-2xs font-extrabold'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      } ${!notificationConfig.notebookUngradedAlertEnabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      {days} Gün
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Kontrolden {notificationConfig.notebookUngradedDays} gün sonra not girilmediyse uyarı verilir.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Preferences */}
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notificationConfig.soundEnabled}
+                  onChange={(e) => {
+                    if (onUpdateNotificationConfig) {
+                      onUpdateNotificationConfig({
+                        ...notificationConfig,
+                        soundEnabled: e.target.checked,
+                      });
+                    }
+                  }}
+                  className="rounded text-amber-500 focus:ring-amber-400 h-4 w-4"
+                />
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                  {notificationConfig.soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-amber-600" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+                  Uyarı Ses Efekti
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notificationConfig.showOnDashboard}
+                  onChange={(e) => {
+                    if (onUpdateNotificationConfig) {
+                      onUpdateNotificationConfig({
+                        ...notificationConfig,
+                        showOnDashboard: e.target.checked,
+                      });
+                    }
+                  }}
+                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                />
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                  <LayoutDashboard className="w-3.5 h-3.5 text-indigo-600" />
+                  Anasayfa Kartında Göster
+                </span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onUpdateNotificationConfig) {
+                    onUpdateNotificationConfig(DEFAULT_NOTIFICATION_CONFIG);
+                  }
+                }}
+                className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Varsayılanlara Sıfırla
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

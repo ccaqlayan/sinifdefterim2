@@ -157,6 +157,7 @@ export const WeeklySummaryView: React.FC<WeeklySummaryViewProps> = ({
   // 5. Weekly Plus/Minus Performance Logs
   const weeklyLogs = useMemo(() => {
     return plusMinusLogs.filter((log) => {
+      if (log.isDeleted) return false;
       if (!isDateInWeek(log.date, weekInfo.startDateStr, weekInfo.endDateStr)) return false;
       if (classFilter !== 'all' && log.classId !== classFilter) return false;
       return true;
@@ -279,6 +280,7 @@ export const WeeklySummaryView: React.FC<WeeklySummaryViewProps> = ({
   // 8. Weekly Notebook Controls
   const weeklyNotebooks = useMemo(() => {
     return notebookControls.filter((n) => {
+      if (n.isDeleted) return false;
       if (!isDateInWeek(n.date, weekInfo.startDateStr, weekInfo.endDateStr)) return false;
       if (classFilter !== 'all' && n.classId !== classFilter) return false;
       return true;

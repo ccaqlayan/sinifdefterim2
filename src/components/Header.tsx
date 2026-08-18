@@ -15,6 +15,7 @@ interface HeaderProps {
   onOpenAddClass?: () => void;
   academicYearConfig?: AcademicYearConfig;
   onOpenAcademicSettings?: () => void;
+  onOpenLessonLogModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAddClass,
   academicYearConfig,
   onOpenAcademicSettings,
+  onOpenLessonLogModal,
 }) => {
   const currentClass = classes.find((c) => c.id === selectedClassId) || classes[0];
 
@@ -71,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenAcademicSettings}
               className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 border border-amber-200/90 text-amber-950 text-xs font-black transition-all shadow-2xs cursor-pointer shrink-0"
-              title="Dönem ve Eğitim Yılı Tarih Ayarlarını Aç"
+              title="Dönem, Takvim ve Yıllık Ders Planı Ayarlarını Aç"
             >
               <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
               <span>{academicYearConfig.academicYear}</span>

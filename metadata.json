@@ -1,6 +1,6 @@
 {
   "name": "Sınıf Defterim",
-  "description": "Branş öğretmenleri için mobil öncelikli sınıf içi performans, şans çarkı kura çekimi, artı/eksi, defter, ödev ve quiz takip, ağırlıklı dönem sonu puanlama ve veli bildirim portalı.",
-  "requestFramePermissions": [],
+  "description": "Branş öğretmenleri için mobil öncelikli dijital ders seyir defteri, sınıf içi performans, şans çarkı kura çekimi, artı/eksi, defter, ödev ve quiz takip, ağırlıklı dönem sonu puanlama ve veli bildirim portalı.",
+  "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

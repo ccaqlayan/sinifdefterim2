@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ScheduleConfig, ScheduleDay, ScheduleLesson, ClassRoom } from '../../types';
-import { ALL_DAYS, DAY_FULL_NAMES, COLOR_PALETTE } from '../../utils/scheduleUtils';
+import { ALL_DAYS, DAY_FULL_NAMES, COLOR_PALETTE, findMatchingClass } from '../../utils/scheduleUtils';
 import { ScheduleConfirmModal } from './ScheduleConfirmModal';
-import { X, Check, Trash2, Plus, Sparkles, AlertCircle, Copy } from 'lucide-react';
+import { X, Check, Trash2, Plus, Sparkles, AlertCircle, Copy, Link2, Unlink, GraduationCap } from 'lucide-react';
 
 interface LessonModalProps {
   isOpen: boolean;
@@ -51,8 +51,19 @@ export const LessonModal: React.FC<LessonModalProps> = ({
       setColor(editingLesson.color || '#EF4444');
       setSelectedDays([editingLesson.day]);
       setPeriod(editingLesson.period || 1);
-      setClassId(editingLesson.classId || '');
       setNote(editingLesson.note || '');
+
+      // Determine initial class mapping: explicit classId or auto-match if not set
+      if (editingLesson.classId) {
+        setClassId(editingLesson.classId);
+      } else {
+        const autoMatch = findMatchingClass(editingLesson, classes);
+        if (autoMatch) {
+          setClassId(autoMatch.id);
+        } else {
+          setClassId('');
+        }
+      }
 
       const pTime = config.periodTimes.find((p) => p.period === editingLesson.period);
       setCustomStartTime(editingLesson.startTime || pTime?.startTime || '09:00');
@@ -73,7 +84,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
       setCustomStartTime(pTime?.startTime || '09:00');
       setCustomEndTime(pTime?.endTime || '09:40');
     }
-  }, [isOpen, editingLesson, initialDay, initialPeriod, config]);
+  }, [isOpen, editingLesson, initialDay, initialPeriod, config, classes]);
 
   // Sync times when period changes
   const handlePeriodChange = (newPeriod: number) => {
@@ -85,10 +96,22 @@ export const LessonModal: React.FC<LessonModalProps> = ({
     }
   };
 
+  // Auto-calculated best matching class based on current title & shortName
+  const detectedMatchingClass = useMemo(() => {
+    return findMatchingClass({ title, shortName }, classes);
+  }, [title, shortName, classes]);
+
+  // Auto-match trigger helper
+  const handleApplyAutoMatch = () => {
+    if (detectedMatchingClass) {
+      setClassId(detectedMatchingClass.id);
+    }
+  };
+
   // Quick class selector handler
   const handleSelectClass = (cls: ClassRoom) => {
     setClassId(cls.id);
-    const generatedTitle = `${cls.name} ${cls.subject}`;
+    const generatedTitle = `${cls.name} ${cls.subject || 'Ders'}`.trim();
     setTitle(generatedTitle);
     
     // Auto-generate concise short name (e.g. "9-A" -> "9A", "10-B" -> "10B")
@@ -146,6 +169,8 @@ export const LessonModal: React.FC<LessonModalProps> = ({
 
   if (!isOpen) return null;
 
+  const currentSelectedClass = classes.find((c) => c.id === classId);
+
   return (
     <div
       id="lesson-modal-overlay"
@@ -173,7 +198,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                 {isEditing ? 'Dersi Düzenle' : 'Yeni Ders'}
               </h3>
               <p className="text-[11px] text-slate-400 font-medium">
-                {isEditing ? 'Ders bilgilerini güncelleyin' : 'Programınıza yeni bir ders ekleyin'}
+                {isEditing ? 'Ders ve sınıf eşleştirme bilgilerini güncelleyin' : 'Programınıza yeni bir ders ekleyin'}
               </p>
             </div>
           </div>
@@ -190,7 +215,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-5 flex-1 text-slate-800">
-          {/* Quick Select from existing classes */}
+          {/* Quick Select from existing classes for new lesson */}
           {classes.length > 0 && !isEditing && (
             <div className="space-y-1.5">
               <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1">
@@ -209,7 +234,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                     }`}
                   >
-                    {cls.name} ({cls.subject})
+                    {cls.name} {cls.subject ? `(${cls.subject})` : ''}
                   </button>
                 ))}
               </div>
@@ -220,7 +245,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
           <div className="space-y-1.5">
             <label className="text-xs font-black text-slate-700 flex items-center justify-between">
               <span>İsim <span className="text-rose-500">*</span></span>
-              <span className="text-[11px] text-slate-400 font-normal">Örn: 10-C veya Matematik</span>
+              <span className="text-[11px] text-slate-400 font-normal">Örn: 9/C Matematik veya 10-C</span>
             </label>
             <input
               type="text"
@@ -232,7 +257,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                   setShortName(e.target.value.slice(0, 6).toUpperCase());
                 }
               }}
-              placeholder="Örn: 10-C Matematik"
+              placeholder="Örn: 9/C Matematik"
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
             />
           </div>
@@ -250,7 +275,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
                 maxLength={10}
                 value={shortName}
                 onChange={(e) => setShortName(e.target.value)}
-                placeholder="Örn: 10C, 12D, 10C REH"
+                placeholder="Örn: 9C, 12D, 10C REH"
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white tracking-wide uppercase transition-all"
               />
               {/* Preview Badge */}
@@ -263,7 +288,72 @@ export const LessonModal: React.FC<LessonModalProps> = ({
             </div>
           </div>
 
-          {/* Renk Seçimi (Color Palette & Spectrum) */}
+          {/* SINIF EŞLEŞTİRME SEÇENEKLERİ (CLASS MAPPING SECTION) */}
+          <div className="bg-indigo-50/70 p-3.5 rounded-2xl border border-indigo-100 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                <GraduationCap className="w-4 h-4 text-indigo-600" />
+                Sınıf Eşleştirme (Canlı Otomatik Geçiş)
+              </label>
+              {detectedMatchingClass && classId !== detectedMatchingClass.id && (
+                <button
+                  type="button"
+                  onClick={handleApplyAutoMatch}
+                  className="text-[10px] font-black bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer transition-all"
+                  title="Yapay zeka / isimden otomatik algılanan sınıfı seç"
+                >
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Önerilen: {detectedMatchingClass.name}
+                </button>
+              )}
+            </div>
+
+            <p className="text-[11px] text-indigo-900/80 leading-relaxed font-medium">
+              Bu dersin saati geldiğinde uygulama otomatik olarak bağlanan sınıfın öğrenci listesine ve performans ekranına geçer.
+            </p>
+
+            <div className="space-y-2">
+              <select
+                value={classId}
+                onChange={(e) => setClassId(e.target.value)}
+                className="w-full px-3 py-2.5 bg-white border border-indigo-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs cursor-pointer"
+              >
+                <option value="">-- Eşleştirme Yok (Sınıf Bağlama / Boş Bırak) --</option>
+                {classes.map((cls) => {
+                  const isAuto = detectedMatchingClass?.id === cls.id;
+                  return (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name} {cls.subject ? `• ${cls.subject}` : ''} {cls.grade ? `(${cls.grade}. Sınıf)` : ''} {isAuto ? '✨ (Otomatik Eşleşti)' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+
+              {/* Status Pill */}
+              {currentSelectedClass ? (
+                <div className="flex items-center justify-between px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800">
+                  <div className="flex items-center gap-1.5">
+                    <Link2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Bağlı Sınıf: <strong>{currentSelectedClass.name}</strong> ({currentSelectedClass.subject || 'Ders'})</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setClassId('')}
+                    className="text-[10px] text-rose-600 hover:text-rose-700 font-bold underline cursor-pointer"
+                  >
+                    Bağlantıyı Kaldır
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-500">
+                  <Unlink className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Herhangi bir sınıfla eşleştirilmedi (Boş).</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Renk Seçimi (Color Palette) */}
           <div className="space-y-2">
             <label className="text-xs font-black text-slate-700 block">
               Renk Seçimi

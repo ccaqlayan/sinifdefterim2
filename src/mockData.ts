@@ -1,4 +1,4 @@
-import { ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, ParentFeedbackLog } from './types';
+import { ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, NotificationSettingsConfig, ParentFeedbackLog, AuditLog, LessonLogNote } from './types';
 
 export const INITIAL_CLASSES: ClassRoom[] = [
   {
@@ -182,6 +182,13 @@ export const INITIAL_QUIZ_DEFINITIONS: Quiz[] = [
     date: '2026-02-12',
     description: 'Kareköklü ifadeler ve toplama/çıkarma uygulamaları',
   },
+  {
+    id: 'quiz-def-urgent-1',
+    classId: 'class-1',
+    title: 'Quiz 3: Çarpanlara Ayırma & Özdeşlikler',
+    date: new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10),
+    description: '10 soruluk kısa kazanım tarama sınavı (Not girişi bekleniyor)',
+  },
 ];
 
 export const INITIAL_QUIZZES: QuizScore[] = [
@@ -231,6 +238,22 @@ export const INITIAL_HOMEWORKS: Homework[] = [
     assignedDate: '2026-02-09',
     dueDate: '2026-02-15',
   },
+  {
+    id: 'hw-urgent-1',
+    classId: 'class-1',
+    title: 'Üslü & Köklü Sayılar Peş Pekiştirme Ödevi',
+    description: 'Ders kitabı sayfa 52-55 arası sorular çözülüp kontrol edilecek.',
+    assignedDate: new Date(Date.now() - 12 * 3600000).toISOString().slice(0, 10),
+    dueDate: new Date(Date.now() + 16 * 3600000).toISOString().slice(0, 10),
+  },
+  {
+    id: 'hw-urgent-2',
+    classId: 'class-2',
+    title: 'Fizik: Vektörler ve Kuvvet Dengesi',
+    description: 'Problem seti 2.1 - 2.8 arası 8 soru deftere çözülecek.',
+    assignedDate: new Date(Date.now() - 18 * 3600000).toISOString().slice(0, 10),
+    dueDate: new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10),
+  },
 ];
 
 export const INITIAL_HOMEWORK_RECORDS: HomeworkRecord[] = [
@@ -267,6 +290,17 @@ export const INITIAL_WEIGHT_SETTINGS: WeightSettings = {
   plusMinusWeight: 25, // %25 Derse Katılım (+/-)
   homeworkWeight: 25,  // %25 Ödev Takibi
   notebookWeight: 20,  // %20 Defter Kontrolü
+};
+
+export const DEFAULT_NOTIFICATION_CONFIG: NotificationSettingsConfig = {
+  homeworkDeadlineEnabled: true,
+  homeworkDeadlineDays: 2, // Son 2 gün kala teslim uyarısı
+  quizUngradedAlertEnabled: true,
+  quizUngradedDays: 2, // Quiz üzerinden 2 gün geçmesine rağmen not girilmemişse
+  notebookUngradedAlertEnabled: true,
+  notebookUngradedDays: 3, // Defter kontrolü üzerinden 3 gün geçmesine rağmen not girilmemişse
+  soundEnabled: true,
+  showOnDashboard: true,
 };
 
 export const INITIAL_NOTIFICATION_SETTINGS: NotificationSetting[] = [
@@ -316,3 +350,199 @@ export const INITIAL_FEEDBACK_LOGS: ParentFeedbackLog[] = [
     sentBy: 'Mert Öğretmen',
   }
 ];
+
+export const INITIAL_AUDIT_LOGS: AuditLog[] = [
+  {
+    id: 'log-1',
+    timestamp: '2026-02-12T14:45:00.000Z',
+    date: '2026-02-12',
+    time: '14:45',
+    category: 'quiz',
+    actionType: 'create',
+    title: 'Yeni Quiz Tanımlandı',
+    description: '9-A sınıfı için "Quiz 2: Köklü İfadeler" sınavı oluşturuldu.',
+    classId: 'class-1',
+    className: '9-A (Matematik)',
+    isBulk: false,
+    affectedCount: 1,
+    metadata: { quizTitle: 'Quiz 2: Köklü İfadeler', maxScore: 100 },
+  },
+  {
+    id: 'log-2',
+    timestamp: '2026-02-12T11:20:00.000Z',
+    date: '2026-02-12',
+    time: '11:20',
+    category: 'plusminus',
+    actionType: 'bulk_save',
+    title: 'Toplu Artı / Eksi Değerlendirmesi Yapıldı',
+    description: '9-A sınıfından 4 öğrenciye derse katılım ve soru çözümü kapsamında artı/eksi puan verildi.',
+    classId: 'class-1',
+    className: '9-A (Matematik)',
+    isBulk: true,
+    affectedCount: 4,
+    studentDetails: [
+      { studentId: 'std-101', studentName: 'Ahmet Yılmaz', studentNumber: '101', actionSummary: '+1 Artı eklendi (Soru Çözümü)', badgeType: 'success' },
+      { studentId: 'std-102', studentName: 'Ayşe Kaya', studentNumber: '102', actionSummary: '+1 Artı eklendi (Ders Katılımı)', badgeType: 'success' },
+      { studentId: 'std-104', studentName: 'Elif Demir', studentNumber: '104', actionSummary: '+1 Artı eklendi (Grup Çalışması)', badgeType: 'success' },
+      { studentId: 'std-105', studentName: 'Burak Şahin', studentNumber: '105', actionSummary: '-1 Eksi verildi (Sınıf Kuralları)', badgeType: 'danger' },
+    ],
+  },
+  {
+    id: 'log-3',
+    timestamp: '2026-02-11T14:30:00.000Z',
+    date: '2026-02-11',
+    time: '14:30',
+    category: 'parent',
+    actionType: 'send_message',
+    title: 'Veliye WhatsApp Bildirimi Gönderildi',
+    description: 'Can Özdemir (No: 103) velisine defter eksikliği bildirimi iletildi.',
+    classId: 'class-1',
+    className: '9-A (Matematik)',
+    isBulk: false,
+    affectedCount: 1,
+    studentDetails: [
+      { studentId: 'std-103', studentName: 'Can Özdemir', studentNumber: '103', actionSummary: 'WhatsApp Mesajı: "Defter kontrolünde %60 tamamlanma görülmüştür..."', badgeType: 'info' }
+    ],
+  },
+  {
+    id: 'log-4',
+    timestamp: '2026-02-10T15:10:00.000Z',
+    date: '2026-02-10',
+    time: '15:10',
+    category: 'notebook',
+    actionType: 'bulk_save',
+    title: '9-A Sınıfı Defter Kontrolü Kaydedildi',
+    description: '5 öğrencinin defter kontrol sonuçları ve puanları sisteme işlendi.',
+    classId: 'class-1',
+    className: '9-A (Matematik)',
+    isBulk: true,
+    affectedCount: 5,
+    studentDetails: [
+      { studentId: 'std-101', studentName: 'Ahmet Yılmaz', studentNumber: '101', actionSummary: 'Defter: Tam (%100) - "Tüm konu özetleri ve çizimler tam."', badgeType: 'success' },
+      { studentId: 'std-102', studentName: 'Ayşe Kaya', studentNumber: '102', actionSummary: 'Defter: Tam (%95) - "Çok temiz ve tertipli."', badgeType: 'success' },
+      { studentId: 'std-103', studentName: 'Can Özdemir', studentNumber: '103', actionSummary: 'Defter: Yarım (%60) - "Son 2 haftalık formüller eksik."', badgeType: 'warning' },
+      { studentId: 'std-104', studentName: 'Elif Demir', studentNumber: '104', actionSummary: 'Defter: Tam (%90) - "Tamamlanmış."', badgeType: 'success' },
+      { studentId: 'std-105', studentName: 'Burak Şahin', studentNumber: '105', actionSummary: 'Defter: Eksik (%35) - "Defterde büyük boşluklar var."', badgeType: 'danger' },
+    ],
+  },
+  {
+    id: 'log-5',
+    timestamp: '2026-02-09T09:00:00.000Z',
+    date: '2026-02-09',
+    time: '09:00',
+    category: 'homework',
+    actionType: 'create',
+    title: 'Yeni Ödev Atandı',
+    description: '"Köklü İfadeler Çalışma Kağıdı" ödevi 9-A sınıfına atandı (Son Teslim: 15 Şubat).',
+    classId: 'class-1',
+    className: '9-A (Matematik)',
+    isBulk: false,
+    affectedCount: 1,
+    metadata: { title: 'Köklü İfadeler Çalışma Kağıdı', dueDate: '2026-02-15' },
+  },
+  {
+    id: 'log-6',
+    timestamp: '2026-02-08T16:00:00.000Z',
+    date: '2026-02-08',
+    time: '16:00',
+    category: 'homework',
+    actionType: 'bulk_save',
+    title: 'Ödev Teslim Durumları Güncellendi',
+    description: '"Üslü Sayılar Test 3-4 Solüsyonu" ödevi için 5 öğrencinin teslim kaydı işlendi.',
+    classId: 'class-1',
+    className: '9-A (Matematik)',
+    isBulk: true,
+    affectedCount: 5,
+    studentDetails: [
+      { studentId: 'std-101', studentName: 'Ahmet Yılmaz', studentNumber: '101', actionSummary: 'Ödev: Eksiksiz Teslim Edildi', badgeType: 'success' },
+      { studentId: 'std-102', studentName: 'Ayşe Kaya', studentNumber: '102', actionSummary: 'Ödev: Eksiksiz Teslim Edildi', badgeType: 'success' },
+      { studentId: 'std-103', studentName: 'Can Özdemir', studentNumber: '103', actionSummary: 'Ödev: Teslim Edilmedi (Eksik)', badgeType: 'danger' },
+      { studentId: 'std-104', studentName: 'Elif Demir', studentNumber: '104', actionSummary: 'Ödev: Eksiksiz Teslim Edildi', badgeType: 'success' },
+      { studentId: 'std-105', studentName: 'Burak Şahin', studentNumber: '105', actionSummary: 'Ödev: Geç Teslim Edildi', badgeType: 'warning' },
+    ],
+  },
+  {
+    id: 'log-7',
+    timestamp: '2026-02-05T10:30:00.000Z',
+    date: '2026-02-05',
+    time: '10:30',
+    category: 'quiz',
+    actionType: 'bulk_save',
+    title: 'Quiz Puanları Girildi',
+    description: '"Quiz 1: Üslü Sayılar" sınavı için sınıf notları kaydedildi.',
+    classId: 'class-1',
+    className: '9-A (Matematik)',
+    isBulk: true,
+    affectedCount: 5,
+    studentDetails: [
+      { studentId: 'std-101', studentName: 'Ahmet Yılmaz', studentNumber: '101', actionSummary: 'Quiz Puanı: 95 / 100', badgeType: 'success' },
+      { studentId: 'std-102', studentName: 'Ayşe Kaya', studentNumber: '102', actionSummary: 'Quiz Puanı: 88 / 100', badgeType: 'success' },
+      { studentId: 'std-103', studentName: 'Can Özdemir', studentNumber: '103', actionSummary: 'Quiz Puanı: 65 / 100', badgeType: 'warning' },
+      { studentId: 'std-104', studentName: 'Elif Demir', studentNumber: '104', actionSummary: 'Quiz Puanı: 82 / 100', badgeType: 'success' },
+      { studentId: 'std-105', studentName: 'Burak Şahin', studentNumber: '105', actionSummary: 'Quiz Puanı: 55 / 100', badgeType: 'danger' },
+    ],
+  },
+  {
+    id: 'log-8',
+    timestamp: '2026-02-02T08:30:00.000Z',
+    date: '2026-02-02',
+    time: '08:30',
+    category: 'schedule',
+    actionType: 'update',
+    title: 'Haftalık Ders Programı Güncellendi',
+    description: 'Pazartesi 1-2. saatlere 9-A Matematik dersi yerleştirildi.',
+    classId: 'class-1',
+    className: '9-A (Matematik)',
+    isBulk: false,
+    affectedCount: 1,
+  },
+];
+
+export const INITIAL_LESSON_LOGS: LessonLogNote[] = [
+  {
+    id: 'log-ll-1',
+    classId: 'class-1',
+    className: '9-A',
+    subject: 'Matematik',
+    date: '2026-02-13',
+    time: '11:40',
+    rawInputText: 'Bugün mutlak değerde sayfa 48 soru 3te kaldık ahmetin sorusunu çözemedik haftaya 5. sorudan devam edip ödevleri kontrol edelim sınıf biraz gürültülüydü',
+    lastTopic: 'Mutlak Değerli Eşitsizlikler',
+    lastPageAndQuestion: 'Sayfa 48, Soru 3',
+    nextLessonActions: [
+      'Sayfa 48 Soru 5\'ten itibaren çözüme devam edilecek',
+      'Geçen haftaki mutlak değer test ödevi kontrol edilecek',
+      'Ahmet\'in tahtada sorulan sorusu detaylı açıklanacak'
+    ],
+    completedActions: [],
+    classAtmosphereNote: 'Katılım canlıydı fakat son 10 dakikada sınıf içi ses seviyesi biraz yükseldi.',
+    summary: 'Mutlak Değerli Eşitsizlikler işlendi, sayfa 48 soru 3\'te kalındı. Gelecek derste 5. sorudan devam edilip ödevler kontrol edilecek.',
+    isResolved: false,
+    createdAt: '2026-02-13T11:42:00.000Z',
+  },
+  {
+    id: 'log-ll-2',
+    classId: 'class-2',
+    className: '10-B',
+    subject: 'Fizik',
+    date: '2026-02-12',
+    time: '14:20',
+    rawInputText: 'Basınç ünitesinde sıvı basıncı formülü çıkarıldı sayfa 72deki örnek 4 bitti sıra sende 2 ödev verildi gelecek ders katı sıvı basıncı karşılaştırması yapılacak',
+    lastTopic: 'Sıvı Basıncı ve Sıvıların Basınç İletimi',
+    lastPageAndQuestion: 'Sayfa 72, Örnek 4 (Bitti)',
+    nextLessonActions: [
+      'Sayfa 72 "Sıra Sende 2" ödevi kontrol edilecek',
+      'Katı ve Sıvı Basıncı karşılaştırma etkinlikleri yapılacak',
+      'U borulu manometre deney düzeneği incelenecek'
+    ],
+    completedActions: [
+      'Sayfa 72 "Sıra Sende 2" ödevi kontrol edilecek'
+    ],
+    classAtmosphereNote: 'Öğrenciler soru çözümüne ve derse çok ilgiliydi, motivasyon yüksekti.',
+    summary: 'Sıvı basıncı formülü işlendi, Sayfa 72 Örnek 4 tamamlandı. Sıra sende 2 ödevi kontrol edilip manometrelere geçilecek.',
+    isResolved: false,
+    createdAt: '2026-02-12T14:22:00.000Z',
+  }
+];
+
+

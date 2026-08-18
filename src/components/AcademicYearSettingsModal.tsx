@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { AcademicYearConfig, ActiveTermSelection, PerformanceLog, Quiz, QuizScore, Homework, NotebookControl } from '../types';
+import { AcademicYearConfig, ActiveTermSelection, PerformanceLog, Quiz, QuizScore, Homework, NotebookControl, AnnualPlanItem } from '../types';
 import { getPresetDatesForAcademicYear, isDateInTerm } from '../utils/termUtils';
+import { AnnualPlanSettingsBox } from './AnnualPlanSettingsBox';
 import {
   Calendar,
   Sparkles,
@@ -15,6 +16,7 @@ import {
   Info,
   Award,
   Zap,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface AcademicYearSettingsModalProps {
@@ -27,6 +29,9 @@ interface AcademicYearSettingsModalProps {
   quizzes?: QuizScore[];
   homeworks?: Homework[];
   notebookControls?: NotebookControl[];
+  annualPlanItems?: AnnualPlanItem[];
+  onSaveAnnualPlanItems?: (items: AnnualPlanItem[]) => void;
+  userId?: string;
 }
 
 export const AcademicYearSettingsModal: React.FC<AcademicYearSettingsModalProps> = ({
@@ -38,7 +43,11 @@ export const AcademicYearSettingsModal: React.FC<AcademicYearSettingsModalProps>
   quizzes = [],
   homeworks = [],
   notebookControls = [],
+  annualPlanItems = [],
+  onSaveAnnualPlanItems,
+  userId,
 }) => {
+  const [activeTab, setActiveTab] = useState<'term' | 'annualPlan'>('term');
   const [academicYear, setAcademicYear] = useState<string>(config.academicYear || '2025-2026');
   const [activeTermId, setActiveTermId] = useState<ActiveTermSelection>(config.activeTermId || 'term2');
 
@@ -128,38 +137,77 @@ export const AcademicYearSettingsModal: React.FC<AcademicYearSettingsModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 bg-slate-900 w-screen h-screen flex flex-col overflow-hidden animate-in fade-in duration-200">
+      <div className="bg-white w-full h-full flex flex-col overflow-hidden">
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-slate-900 p-5 text-white flex items-center justify-between shrink-0 relative">
+        <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-slate-900 p-5 text-white flex flex-col sm:flex-row sm:items-center justify-between shrink-0 relative gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md shrink-0">
-              <Calendar className="w-5 h-5 text-amber-300" />
+              {activeTab === 'term' ? <Calendar className="w-5 h-5 text-amber-300" /> : <FileSpreadsheet className="w-5 h-5 text-amber-300" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-black tracking-tight">Dönem & Eğitim Yılı Ayarları</h3>
+                <h3 className="text-base font-black tracking-tight">Akademik Ayarlar & Yıllık Ders Planları</h3>
                 <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Tarih Bazlı
+                  Yapay Zeka Destekli
                 </span>
               </div>
               <p className="text-xs text-indigo-200 font-medium">
-                1. ve 2. Dönem tarih aralıklarını ve aktif çalışma dönemini yapılandırın
+                Çalışma dönemi takvimi ve sınıfların Excel yıllık ders planı entegrasyonu
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer"
-            title="Kapat"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Modal Tabs */}
+            <div className="flex items-center p-1 bg-black/20 rounded-2xl border border-white/10 text-xs font-extrabold">
+              <button
+                type="button"
+                onClick={() => setActiveTab('term')}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === 'term' ? 'bg-white text-indigo-950 shadow-xs' : 'text-indigo-200 hover:text-white'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Çalışma Takvimi</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('annualPlan')}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === 'annualPlan' ? 'bg-amber-400 text-slate-950 font-black shadow-xs' : 'text-indigo-200 hover:text-white'
+                }`}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Yıllık Plan Yükle / Düzenle</span>
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer ml-1"
+              title="Kapat"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
         <div className="p-5 overflow-y-auto space-y-5 text-slate-800 flex-1">
+          {activeTab === 'annualPlan' ? (
+            <AnnualPlanSettingsBox
+              annualPlanItems={annualPlanItems}
+              onSavePlanItems={(items) => {
+                if (onSaveAnnualPlanItems) {
+                  onSaveAnnualPlanItems(items);
+                }
+              }}
+              userId={userId}
+            />
+          ) : (
+            <>
           {/* Toast Message */}
           {toastMessage && (
             <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold p-3 rounded-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
@@ -436,6 +484,8 @@ export const AcademicYearSettingsModal: React.FC<AcademicYearSettingsModalProps>
               </p>
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* Modal Footer */}

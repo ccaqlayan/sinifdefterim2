@@ -1,16 +1,20 @@
 import { 
   ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, 
-  HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, ParentFeedbackLog, User, LuckyDrawSettings,
-  ScheduleConfig, ScheduleLesson, AcademicYearConfig 
+  HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, NotificationSettingsConfig, ParentFeedbackLog, User, LuckyDrawSettings,
+  ScheduleConfig, ScheduleLesson, AcademicYearConfig, AuditLog, AnnualPlanItem, RiskRadarConfig, LessonLogNote, DashboardLayoutConfig 
 } from '../types';
 import { 
   INITIAL_CLASSES, INITIAL_STUDENTS, INITIAL_PLUS_MINUS_LOGS, 
   INITIAL_QUIZ_DEFINITIONS, INITIAL_QUIZZES, INITIAL_HOMEWORKS, INITIAL_HOMEWORK_RECORDS, 
   INITIAL_NOTEBOOK_CONTROLS, INITIAL_WEIGHT_SETTINGS, 
-  INITIAL_NOTIFICATION_SETTINGS, INITIAL_FEEDBACK_LOGS 
+  INITIAL_NOTIFICATION_SETTINGS, DEFAULT_NOTIFICATION_CONFIG, INITIAL_FEEDBACK_LOGS, INITIAL_AUDIT_LOGS,
+  INITIAL_LESSON_LOGS
 } from '../mockData';
 import { DEFAULT_SCHEDULE_CONFIG, INITIAL_SCHEDULE_LESSONS } from './scheduleUtils';
 import { DEFAULT_ACADEMIC_YEAR_CONFIG } from './termUtils';
+import { generateSampleAnnualPlan } from './annualPlanParser';
+import { DEFAULT_RISK_RADAR_CONFIG } from './studentRiskUtils';
+import { DEFAULT_DASHBOARD_LAYOUT, normalizeDashboardLayout } from './dashboardLayoutUtils';
 
 export const DEFAULT_LUCKY_DRAW_SETTINGS: LuckyDrawSettings = {
   soundEnabled: true,
@@ -143,6 +147,11 @@ export const Storage = {
   setNotifications: (userId: string | undefined, data: NotificationSetting[]) => 
     setItem(getUserKey(userId, 'notifications'), data),
 
+  getNotificationConfig: (userId?: string): NotificationSettingsConfig =>
+    getItem(getUserKey(userId, 'notification_config'), DEFAULT_NOTIFICATION_CONFIG),
+  setNotificationConfig: (userId: string | undefined, config: NotificationSettingsConfig) =>
+    setItem(getUserKey(userId, 'notification_config'), config),
+
   getFeedbacks: (userId?: string): ParentFeedbackLog[] => {
     const isDemo = !userId || userId === 'usr-demo-teacher';
     return getItem(getUserKey(userId, 'feedbacks'), isDemo ? INITIAL_FEEDBACK_LOGS : []);
@@ -166,6 +175,87 @@ export const Storage = {
     getItem(getUserKey(userId, 'academic_year_config'), DEFAULT_ACADEMIC_YEAR_CONFIG),
   setAcademicYearConfig: (userId: string | undefined, config: AcademicYearConfig) =>
     setItem(getUserKey(userId, 'academic_year_config'), config),
+
+  getAuditLogs: (userId?: string): AuditLog[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'audit_logs'), isDemo ? INITIAL_AUDIT_LOGS : []);
+  },
+  setAuditLogs: (userId: string | undefined, logs: AuditLog[]) =>
+    setItem(getUserKey(userId, 'audit_logs'), logs),
+
+  getAnnualPlans: (userId?: string): AnnualPlanItem[] => {
+    const defaultSample = generateSampleAnnualPlan(['9', '10', '11', '12']);
+    return getItem(getUserKey(userId, 'annual_plans'), defaultSample);
+  },
+  setAnnualPlans: (userId: string | undefined, items: AnnualPlanItem[]) =>
+    setItem(getUserKey(userId, 'annual_plans'), items),
+
+  getRiskConfig: (userId?: string): RiskRadarConfig =>
+    getItem(getUserKey(userId, 'risk_config'), DEFAULT_RISK_RADAR_CONFIG),
+  setRiskConfig: (userId: string | undefined, config: RiskRadarConfig) =>
+    setItem(getUserKey(userId, 'risk_config'), config),
+
+  getLessonLogs: (userId?: string): LessonLogNote[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'lesson_logs'), isDemo ? INITIAL_LESSON_LOGS : []);
+  },
+  setLessonLogs: (userId: string | undefined, logs: LessonLogNote[]) =>
+    setItem(getUserKey(userId, 'lesson_logs'), logs),
+  saveLessonLog: (userId: string | undefined, log: LessonLogNote) => {
+    const current = Storage.getLessonLogs(userId);
+    const existingIndex = current.findIndex((item) => item.id === log.id);
+    let updated: LessonLogNote[];
+    if (existingIndex >= 0) {
+      updated = current.map((item) => (item.id === log.id ? log : item));
+    } else {
+      updated = [log, ...current];
+    }
+    Storage.setLessonLogs(userId, updated);
+    return updated;
+  },
+  deleteLessonLog: (userId: string | undefined, logId: string) => {
+    const current = Storage.getLessonLogs(userId);
+    const updated = current.filter((item) => item.id !== logId);
+    Storage.setLessonLogs(userId, updated);
+    return updated;
+  },
+
+  getLessonResources: (userId?: string): string[] => {
+    const defaultResources = [
+      'MEB Ders Kitabı',
+      'Kazanım Kavrama Testi',
+      'Soru Bankası',
+      'Ders Defteri / Notları',
+      'Fasikül / Föy',
+      'Deneme Sınavı',
+      'Çalışma Yaprağı',
+    ];
+    return getItem(getUserKey(userId, 'lesson_resources'), defaultResources);
+  },
+  setLessonResources: (userId: string | undefined, resources: string[]) =>
+    setItem(getUserKey(userId, 'lesson_resources'), resources),
+
+  getLessonTemplates: (userId?: string): string[] => {
+    const defaultTemplates = [
+      'Sayfa ... Soru ...\'da kaldık',
+      'Gelecek ders ödev kontrolü yapılacak',
+      'Test ... soru ... çözülecek',
+      'Grup çalışması etkinliği tamamlanacak',
+      'Sınıfta ders sonuna doğru ses arttı',
+      'Sınıfın derse katılımı ve motivasyonu çok iyiydi',
+      'Kazanım pekiştirme soruları çözülecek',
+    ];
+    return getItem(getUserKey(userId, 'lesson_templates'), defaultTemplates);
+  },
+  setLessonTemplates: (userId: string | undefined, templates: string[]) =>
+    setItem(getUserKey(userId, 'lesson_templates'), templates),
+
+  getDashboardLayout: (userId?: string): DashboardLayoutConfig => {
+    const stored = getItem<DashboardLayoutConfig | null>(getUserKey(userId, 'dashboard_layout'), null);
+    return normalizeDashboardLayout(stored || DEFAULT_DASHBOARD_LAYOUT);
+  },
+  setDashboardLayout: (userId: string | undefined, config: DashboardLayoutConfig) =>
+    setItem(getUserKey(userId, 'dashboard_layout'), config),
 
   resetToDefaults: () => {
     localStorage.clear();
