@@ -117,3 +117,23 @@ export function calculateStudentOverallScore(
     letterGrade,
   };
 }
+
+export function calculateOverallTermScores(
+  students: Student[],
+  plusMinusLogs: PerformanceLog[],
+  quizzes: QuizScore[],
+  homeworkRecords: HomeworkRecord[],
+  notebookControls: NotebookControl[],
+  weights: WeightSettings
+): OverallTermScore[] {
+  return students.map((student) =>
+    calculateStudentOverallScore(
+      student,
+      plusMinusLogs,
+      quizzes,
+      homeworkRecords,
+      notebookControls,
+      weights
+    )
+  );
+}

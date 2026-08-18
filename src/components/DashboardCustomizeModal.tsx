@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   X, SlidersHorizontal, ArrowUp, ArrowDown, Eye, EyeOff, RotateCcw, 
   Check, Sparkles, Clock, Bell, BookOpen, Layers, ShieldAlert, Zap, 
-  AlertTriangle, CheckCircle2, Info
+  AlertTriangle, CheckCircle2, Info, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DashboardLayoutConfig, DashboardWidgetConfig, DashboardWidgetId } from '../types';
@@ -25,6 +25,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   ShieldAlert: ShieldAlert,
   Zap: Zap,
   AlertTriangle: AlertTriangle,
+  Award: Award,
 };
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {

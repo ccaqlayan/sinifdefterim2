@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { 
   Student, PerformanceLog, ClassRoom, PlusMinusCategory, 
-  QuizScore, Homework, HomeworkRecord, NotebookControl, WeightSettings 
+  QuizScore, Homework, HomeworkRecord, NotebookControl, WeightSettings, StudentBadge 
 } from '../types';
 import { playScoreSound } from '../utils/audio';
+import { isBadgeActive } from '../utils/badgeUtils';
 import { StudentDetailModal } from './StudentDetailModal';
 import { Plus, Minus, Search, Sparkles, Dices, ExternalLink, CheckSquare, Square, Users, Check } from 'lucide-react';
 
@@ -34,6 +35,7 @@ interface QuickScoreViewProps {
   onUpdateNotebookControl?: (control: NotebookControl) => void;
   onDeleteNotebookControl?: (id: string) => void;
   weights?: WeightSettings;
+  badges?: StudentBadge[];
 }
 
 const CATEGORIES: PlusMinusCategory[] = [
@@ -62,6 +64,7 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
   onUpdateNotebookControl,
   onDeleteNotebookControl,
   weights = { homeworkPercent: 30, quizPercent: 40, notebookPercent: 15, plusMinusPercent: 15 },
+  badges = [],
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<PlusMinusCategory>('Ders Katılımı');
@@ -361,7 +364,7 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className="text-[11px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-md border border-emerald-100">
                           +{counts.plus}
                         </span>
@@ -375,6 +378,25 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
                         >
                           Net: {counts.total > 0 ? `+${counts.total}` : counts.total}
                         </span>
+
+                        {(() => {
+                          const stdBadges = badges.filter((b) => b.studentId === student.id && isBadgeActive(b));
+                          if (stdBadges.length === 0) return null;
+                          return (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {stdBadges.map((b) => (
+                                <span
+                                  key={b.id}
+                                  className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300/80 px-1.5 py-0.2 rounded font-black flex items-center gap-0.5"
+                                  title={b.title}
+                                >
+                                  <span>{b.icon || '🏆'}</span>
+                                  <span className="whitespace-nowrap">{b.title}</span>
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </button>
@@ -417,6 +439,7 @@ export const QuickScoreView: React.FC<QuickScoreViewProps> = ({
         homeworkRecords={homeworkRecords}
         notebookControls={notebookControls}
         weights={weights}
+        badges={badges}
         initialTab="plusminus"
         onAddPlusMinusLog={onAddLog}
         onUpdatePlusMinusLog={onUpdateLog}

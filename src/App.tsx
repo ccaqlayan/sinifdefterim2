@@ -25,6 +25,9 @@ import {
   RiskRadarConfig,
   LessonLogNote,
   DashboardLayoutConfig,
+  StudentBadge,
+  ParentMeetingLog,
+  BadgeDefinition,
 } from './types';
 import { DEFAULT_RISK_RADAR_CONFIG } from './utils/studentRiskUtils';
 import { useCurrentLessonTracker } from './utils/currentLessonTracker';
@@ -61,6 +64,9 @@ import { LuckyDrawModal } from './components/LuckyDrawModal';
 import { AcademicYearSettingsModal } from './components/AcademicYearSettingsModal';
 import { AnnualPlanDetailModal } from './components/AnnualPlanDetailModal';
 import { NotificationSettingsModal } from './components/NotificationSettingsModal';
+import { OfficialReportModal } from './components/OfficialReportModal';
+import { ParentMeetingSummaryModal } from './components/ParentMeetingSummaryModal';
+import { BadgeManagementModal } from './components/BadgeManagementModal';
 
 import { DEFAULT_SCHEDULE_CONFIG, INITIAL_SCHEDULE_LESSONS } from './utils/scheduleUtils';
 import { getCurrentAcademicWeek } from './utils/termUtils';
@@ -124,6 +130,16 @@ import {
   deleteLessonLogFromFirebase,
   subscribeDashboardLayout,
   saveDashboardLayoutToFirebase,
+  subscribeRiskConfig,
+  saveRiskConfigToFirebase,
+  subscribeBadges,
+  saveBadgeToFirebase,
+  deleteBadgeFromFirebase,
+  subscribeBadgeDefinitions,
+  saveAllBadgeDefinitionsToFirebase,
+  deleteBadgeDefinitionFromFirebase,
+  subscribeParentMeetingLogs,
+  saveParentMeetingLogToFirebase,
 } from './services/firebaseSync';
 
 export default function App() {
@@ -186,6 +202,13 @@ export default function App() {
     Storage.getDashboardLayout(user.id)
   );
 
+  // Student Badges State
+  const [badges, setBadges] = useState<StudentBadge[]>(Storage.getBadges(user.id));
+  const [badgeDefinitions, setBadgeDefinitions] = useState<BadgeDefinition[]>(Storage.getBadgeDefinitions(user.id));
+
+  // Parent Meeting Logs State
+  const [parentMeetingLogs, setParentMeetingLogs] = useState<ParentMeetingLog[]>(Storage.getParentMeetingLogs(user.id));
+
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [targetHomeworkId, setTargetHomeworkId] = useState<string | undefined>(undefined);
@@ -213,6 +236,10 @@ export default function App() {
   const [isPdfImportOpen, setIsPdfImportOpen] = useState<boolean>(false);
   const [isClassModalOpen, setIsClassModalOpen] = useState<boolean>(false);
   const [isLuckyDrawOpen, setIsLuckyDrawOpen] = useState<boolean>(false);
+  const [isOfficialReportOpen, setIsOfficialReportOpen] = useState<boolean>(false);
+  const [isParentMeetingModalOpen, setIsParentMeetingModalOpen] = useState<boolean>(false);
+  const [isBadgeManagementOpen, setIsBadgeManagementOpen] = useState<boolean>(false);
+  const [selectedParentStudentId, setSelectedParentStudentId] = useState<string | undefined>(undefined);
   const [isAcademicSettingsOpen, setIsAcademicSettingsOpen] = useState<boolean>(false);
   const [isTeacherManagementOpen, setIsTeacherManagementOpen] = useState<boolean>(false);
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState<boolean>(false);
@@ -270,6 +297,9 @@ export default function App() {
   useEffect(() => { if (user?.id) Storage.setAnnualPlans(user.id, annualPlanItems); }, [annualPlanItems, user?.id]);
   useEffect(() => { if (user?.id) Storage.setLessonLogs(user.id, lessonLogs); }, [lessonLogs, user?.id]);
   useEffect(() => { if (user?.id) Storage.setRiskConfig(user.id, riskConfig); }, [riskConfig, user?.id]);
+  useEffect(() => { if (user?.id) Storage.setBadges(user.id, badges); }, [badges, user?.id]);
+  useEffect(() => { if (user?.id) Storage.setBadgeDefinitions(user.id, badgeDefinitions); }, [badgeDefinitions, user?.id]);
+  useEffect(() => { if (user?.id) Storage.setParentMeetingLogs(user.id, parentMeetingLogs); }, [parentMeetingLogs, user?.id]);
 
   // Firebase Real-time Subscriptions & Initial Seeding per User
   useEffect(() => {
@@ -321,10 +351,18 @@ export default function App() {
     const unsubFeedbacks = subscribeFeedbacks(currentUserId, (data) => setFeedbackLogs(data));
     const unsubAuditLogs = subscribeAuditLogs(currentUserId, (data) => setAuditLogs(data));
     const unsubLessonLogs = subscribeLessonLogs(currentUserId, (data) => setLessonLogs(data));
+    const unsubBadges = subscribeBadges(currentUserId, (data) => setBadges(data));
+    const unsubBadgeDefs = subscribeBadgeDefinitions(currentUserId, (data) => {
+      if (data && data.length > 0) setBadgeDefinitions(data);
+    });
+    const unsubParentMeetingLogs = subscribeParentMeetingLogs(currentUserId, (data) => setParentMeetingLogs(data));
 
-    // Dashboard layout subscription
+    // Dashboard layout & Risk Config subscriptions
     const unsubDashboardLayout = subscribeDashboardLayout(currentUserId, (layout) => {
       if (layout) setDashboardLayout(layout);
+    });
+    const unsubRiskConfig = subscribeRiskConfig(currentUserId, (config) => {
+      if (config) setRiskConfig(config);
     });
 
     // Notification config subscription
@@ -380,12 +418,16 @@ export default function App() {
       unsubFeedbacks();
       unsubAuditLogs();
       unsubDashboardLayout();
+      unsubRiskConfig();
       unsubNotifConfig();
       unsubAcademicConfig();
       unsubScheduleConfig();
       unsubScheduleLessons();
       unsubAnnualPlans();
       unsubLessonLogs();
+      unsubBadges();
+      unsubBadgeDefs();
+      unsubParentMeetingLogs();
       unsubProfile();
       unsubWheelSettings();
     };
@@ -498,6 +540,65 @@ export default function App() {
     if (user.isLoggedIn) {
       saveAcademicYearConfigToFirebase(user.id, newConfig);
     }
+  };
+
+  // Badge Handlers
+  const handleAwardBadge = (newBadge: StudentBadge) => {
+    setBadges((prev) => [newBadge, ...prev.filter((b) => b.id !== newBadge.id)]);
+    Storage.setBadges(user.id, [newBadge, ...badges]);
+    if (user.isLoggedIn) {
+      saveBadgeToFirebase(user.id, newBadge);
+    }
+    const student = students.find((s) => s.id === newBadge.studentId);
+    addAuditLog({
+      category: 'student',
+      actionType: 'create',
+      title: 'Öğrenciye Rozet Verildi',
+      description: `${student?.name || ''} ${student?.surname || ''} öğrencisine "${newBadge.title}" rozeti tanımlandı.`,
+      studentDetails: [{
+        studentId: newBadge.studentId,
+        studentName: `${student?.name || ''} ${student?.surname || ''}`,
+        actionSummary: `Rozet: ${newBadge.title}`,
+        badgeType: 'success',
+      }],
+    });
+  };
+
+  const handleDeleteBadge = (badgeId: string) => {
+    setBadges((prev) => prev.filter((b) => b.id !== badgeId));
+    if (user.isLoggedIn) {
+      deleteBadgeFromFirebase(user.id, badgeId);
+    }
+  };
+
+  const handleUpdateBadgeDefinitions = (newDefs: BadgeDefinition[]) => {
+    setBadgeDefinitions(newDefs);
+    Storage.setBadgeDefinitions(user.id, newDefs);
+    if (user.isLoggedIn) {
+      saveAllBadgeDefinitionsToFirebase(user.id, newDefs);
+    }
+  };
+
+  // Parent Meeting Log Handlers
+  const handleSaveParentMeetingLog = (log: ParentMeetingLog) => {
+    setParentMeetingLogs((prev) => [log, ...prev.filter((l) => l.id !== log.id)]);
+    Storage.setParentMeetingLogs(user.id, [log, ...parentMeetingLogs]);
+    if (user.isLoggedIn) {
+      saveParentMeetingLogToFirebase(user.id, log);
+    }
+    const student = students.find((s) => s.id === log.studentId);
+    addAuditLog({
+      category: 'parent',
+      actionType: 'create',
+      title: 'Veli Görüşme Notu Kaydedildi',
+      description: `${student?.name || ''} ${student?.surname || ''} velisi (${log.parentName || 'Veli'}) ile yapılan görüşme kaydedildi.`,
+      studentDetails: [{
+        studentId: log.studentId,
+        studentName: `${student?.name || ''} ${student?.surname || ''}`,
+        actionSummary: `Veli Notu: ${log.summary.slice(0, 40)}...`,
+        badgeType: 'info',
+      }],
+    });
   };
 
   // User Profile and Settings Handlers
@@ -1551,6 +1652,9 @@ export default function App() {
   const handleSaveRiskConfig = (newConfig: RiskRadarConfig) => {
     setRiskConfig(newConfig);
     Storage.setRiskConfig(user.id, newConfig);
+    if (user.isLoggedIn) {
+      saveRiskConfigToFirebase(user.id, newConfig);
+    }
 
     addAuditLog({
       category: 'settings',
@@ -1750,6 +1854,11 @@ export default function App() {
                   onDeleteLessonLog={handleDeleteLessonLog}
                   layoutConfig={dashboardLayout}
                   onOpenCustomizeDashboard={() => setIsDashboardCustomizeOpen(true)}
+                  onOpenOfficialReport={() => setIsOfficialReportOpen(true)}
+                  onOpenParentMeetingModal={() => setIsParentMeetingModalOpen(true)}
+                  onOpenBadgeManagement={() => setIsBadgeManagementOpen(true)}
+                  badges={badges}
+                  onAwardBadge={handleAwardBadge}
                 />
               )}
 
@@ -1772,6 +1881,7 @@ export default function App() {
                     onUpdateNotebookControl={handleUpdateNotebookControl}
                     onDeleteNotebookControl={handleDeleteNotebookControl}
                     weights={weights}
+                    badges={badges}
                   />
                 ) : (
                   <NoClassGuideView
@@ -1803,6 +1913,7 @@ export default function App() {
                     homeworks={homeworks}
                     homeworkRecords={homeworkRecords}
                     weights={weights}
+                    badges={badges}
                   />
                 ) : (
                   <NoClassGuideView
@@ -1845,6 +1956,7 @@ export default function App() {
                     onPermanentDeleteHomework={handlePermanentDeleteHomework}
                     onUpdateHomeworkRecord={handleUpdateHomeworkRecord}
                     onBatchUpdateHomeworkRecords={handleBatchUpdateHomeworkRecords}
+                    badges={badges}
                   />
                 ) : (
                   <NoClassGuideView
@@ -1874,6 +1986,7 @@ export default function App() {
                   onOpenBulkImport={() => setIsBulkImportOpen(true)}
                   onOpenPdfImport={() => setIsPdfImportOpen(true)}
                   onOpenAddClassModal={() => setIsClassModalOpen(true)}
+                  badges={badges}
                 />
               )}
 
@@ -1888,9 +2001,13 @@ export default function App() {
                     homeworkRecords={homeworkRecords}
                     notebookControls={notebookControls}
                     weights={weights}
+                    badges={badges}
                     onUpdateWeights={handleUpdateWeights}
                     academicYearConfig={academicYearConfig}
                     onOpenAcademicSettings={() => setIsAcademicSettingsOpen(true)}
+                    onOpenOfficialReport={() => setIsOfficialReportOpen(true)}
+                    onOpenParentMeetingModal={() => setIsParentMeetingModalOpen(true)}
+                    onOpenBadgeManagement={() => setIsBadgeManagementOpen(true)}
                   />
                 ) : (
                   <NoClassGuideView
@@ -1932,6 +2049,8 @@ export default function App() {
                   onUpdateNotificationConfig={handleSaveNotificationConfig}
                   onOpenNotificationSettings={() => setIsNotificationSettingsOpen(true)}
                   onOpenDashboardCustomize={() => setIsDashboardCustomizeOpen(true)}
+                  onOpenOfficialReport={() => setIsOfficialReportOpen(true)}
+                  onOpenBadgeManagement={() => setIsBadgeManagementOpen(true)}
                 />
               )}
 
@@ -2197,6 +2316,62 @@ export default function App() {
         onClose={() => setIsDashboardCustomizeOpen(false)}
         currentLayout={dashboardLayout}
         onSaveLayout={handleSaveDashboardLayout}
+      />
+
+      <OfficialReportModal
+        isOpen={isOfficialReportOpen}
+        onClose={() => setIsOfficialReportOpen(false)}
+        classes={classes}
+        selectedClassId={selectedClassId}
+        onSelectClass={setSelectedClassId}
+        students={students}
+        plusMinusLogs={plusMinusLogs}
+        quizDefinitions={quizDefinitions}
+        quizzes={quizzes}
+        homeworks={homeworks}
+        homeworkRecords={homeworkRecords}
+        notebookControls={notebookControls}
+        weights={weights}
+        academicYearConfig={academicYearConfig}
+        lessonLogs={lessonLogs}
+        annualPlanItems={annualPlanItems}
+        teacherName={user.name}
+        schoolName={user.schoolName}
+      />
+
+      <ParentMeetingSummaryModal
+        isOpen={isParentMeetingModalOpen}
+        onClose={() => setIsParentMeetingModalOpen(false)}
+        students={students.filter((s) => s.classId === selectedClassId)}
+        selectedStudentId={selectedParentStudentId}
+        onSelectStudentId={setSelectedParentStudentId}
+        plusMinusLogs={plusMinusLogs}
+        quizzes={quizzes}
+        homeworkRecords={homeworkRecords}
+        notebookControls={notebookControls}
+        parentMeetingLogs={parentMeetingLogs}
+        onSaveParentMeetingLog={handleSaveParentMeetingLog}
+        subjectName={currentClass?.subject || 'Matematik & Fen'}
+      />
+
+      <BadgeManagementModal
+        isOpen={isBadgeManagementOpen}
+        onClose={() => setIsBadgeManagementOpen(false)}
+        classes={classes}
+        selectedClassId={selectedClassId}
+        onSelectClass={setSelectedClassId}
+        students={students}
+        badges={badges}
+        badgeDefinitions={badgeDefinitions}
+        onUpdateBadgeDefinitions={handleUpdateBadgeDefinitions}
+        onAwardBadge={handleAwardBadge}
+        onDeleteBadge={handleDeleteBadge}
+        plusMinusLogs={plusMinusLogs}
+        quizzes={quizzes}
+        homeworkRecords={homeworkRecords}
+        notebookControls={notebookControls}
+        teacherName={user.name}
+        schoolName={user.schoolName}
       />
 
       {/* Live Active Lesson Auto-Switch Toast Notification */}

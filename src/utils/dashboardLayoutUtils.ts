@@ -42,6 +42,14 @@ export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetConfig[] = [
     enabled: true,
   },
   {
+    id: 'weekly_stars',
+    title: 'Haftanın Yıldızları (En Çok Artı Alanlar)',
+    description: 'Bu hafta sınıfta en yüksek performans / artı puan toplayan başarılı öğrenciler sıralaması',
+    category: 'Öğrenci Analizi',
+    iconName: 'Award',
+    enabled: true,
+  },
+  {
     id: 'student_risk_radar',
     title: 'Riskli Öğrenci Alarmı & Erken Müdahale',
     description: 'Son 3 haftada performansı veya ödev tamlığı kritik seviyeye düşen öğrencilerin radarı',
@@ -55,6 +63,14 @@ export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetConfig[] = [
     description: 'Seyir Defteri, Canlı Artı/Eksi, Şans Çarkı, Quiz, Ödev ve Raporlar kısayol butonları',
     category: 'Hızlı Araçlar',
     iconName: 'Zap',
+    enabled: true,
+  },
+  {
+    id: 'quick_badge_award',
+    title: 'Hızlı Rozet & Ödül Verme Kutusu',
+    description: 'Öğrencilere anında başarı rozeti ve tebrik ödülü tanımlama modülü',
+    category: 'Hızlı Araçlar',
+    iconName: 'Award',
     enabled: true,
   },
   {

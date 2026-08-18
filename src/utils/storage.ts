@@ -1,14 +1,15 @@
 import { 
   ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, 
   HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, NotificationSettingsConfig, ParentFeedbackLog, User, LuckyDrawSettings,
-  ScheduleConfig, ScheduleLesson, AcademicYearConfig, AuditLog, AnnualPlanItem, RiskRadarConfig, LessonLogNote, DashboardLayoutConfig 
+  ScheduleConfig, ScheduleLesson, AcademicYearConfig, AuditLog, AnnualPlanItem, RiskRadarConfig, LessonLogNote, DashboardLayoutConfig,
+  StudentBadge, ParentMeetingLog, BadgeDefinition 
 } from '../types';
 import { 
   INITIAL_CLASSES, INITIAL_STUDENTS, INITIAL_PLUS_MINUS_LOGS, 
   INITIAL_QUIZ_DEFINITIONS, INITIAL_QUIZZES, INITIAL_HOMEWORKS, INITIAL_HOMEWORK_RECORDS, 
   INITIAL_NOTEBOOK_CONTROLS, INITIAL_WEIGHT_SETTINGS, 
   INITIAL_NOTIFICATION_SETTINGS, DEFAULT_NOTIFICATION_CONFIG, INITIAL_FEEDBACK_LOGS, INITIAL_AUDIT_LOGS,
-  INITIAL_LESSON_LOGS
+  INITIAL_LESSON_LOGS, INITIAL_BADGES, INITIAL_PARENT_MEETING_LOGS, BADGE_DEFINITIONS
 } from '../mockData';
 import { DEFAULT_SCHEDULE_CONFIG, INITIAL_SCHEDULE_LESSONS } from './scheduleUtils';
 import { DEFAULT_ACADEMIC_YEAR_CONFIG } from './termUtils';
@@ -256,6 +257,26 @@ export const Storage = {
   },
   setDashboardLayout: (userId: string | undefined, config: DashboardLayoutConfig) =>
     setItem(getUserKey(userId, 'dashboard_layout'), config),
+
+  getBadges: (userId?: string): StudentBadge[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'student_badges'), isDemo ? INITIAL_BADGES : []);
+  },
+  setBadges: (userId: string | undefined, badges: StudentBadge[]) =>
+    setItem(getUserKey(userId, 'student_badges'), badges),
+
+  getBadgeDefinitions: (userId?: string): BadgeDefinition[] => {
+    return getItem(getUserKey(userId, 'badge_definitions'), BADGE_DEFINITIONS);
+  },
+  setBadgeDefinitions: (userId: string | undefined, definitions: BadgeDefinition[]) =>
+    setItem(getUserKey(userId, 'badge_definitions'), definitions),
+
+  getParentMeetingLogs: (userId?: string): ParentMeetingLog[] => {
+    const isDemo = !userId || userId === 'usr-demo-teacher';
+    return getItem(getUserKey(userId, 'parent_meeting_logs'), isDemo ? INITIAL_PARENT_MEETING_LOGS : []);
+  },
+  setParentMeetingLogs: (userId: string | undefined, logs: ParentMeetingLog[]) =>
+    setItem(getUserKey(userId, 'parent_meeting_logs'), logs),
 
   resetToDefaults: () => {
     localStorage.clear();

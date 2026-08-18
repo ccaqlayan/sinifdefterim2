@@ -1,4 +1,4 @@
-import { ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, NotificationSettingsConfig, ParentFeedbackLog, AuditLog, LessonLogNote } from './types';
+import { ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, NotificationSettingsConfig, ParentFeedbackLog, AuditLog, LessonLogNote, StudentBadge, ParentMeetingLog, BadgeType } from './types';
 
 export const INITIAL_CLASSES: ClassRoom[] = [
   {
@@ -543,6 +543,133 @@ export const INITIAL_LESSON_LOGS: LessonLogNote[] = [
     isResolved: false,
     createdAt: '2026-02-12T14:22:00.000Z',
   }
+];
+
+export const BADGE_DEFINITIONS: {
+  type: BadgeType;
+  title: string;
+  description: string;
+  iconName: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}[] = [
+  {
+    type: 'homework_master',
+    title: 'Ödev Şampiyonu',
+    description: 'Verilen tüm ödevleri eksiksiz ve zamanında teslim etti.',
+    iconName: 'Trophy',
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-500/10 text-amber-700',
+    borderColor: 'border-amber-200',
+  },
+  {
+    type: 'star_of_week',
+    title: 'Haftanın Yıldızı',
+    description: 'Hafta boyunca örnek davranışı ve yüksek başarısıyla öne çıktı.',
+    iconName: 'Star',
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-400/10 text-amber-700',
+    borderColor: 'border-amber-300/40',
+  },
+  {
+    type: 'class_leader',
+    title: 'Derse Katılım Lideri',
+    description: 'Derse aktif katılımı ve parmak kaldırarak katkısıyla fark yarattı.',
+    iconName: 'Zap',
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50 text-indigo-700',
+    borderColor: 'border-indigo-200',
+  },
+  {
+    type: 'notebook_pro',
+    title: 'Defter Düzen Ustası',
+    description: 'Ders defterini kusursuz, intizamlı ve eksiksiz tutuyor.',
+    iconName: 'BookOpen',
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50 text-emerald-700',
+    borderColor: 'border-emerald-200',
+  },
+  {
+    type: 'quiz_champion',
+    title: 'Quiz Birincisi',
+    description: 'Sınav ve quiz değerlendirmelerinde yüksek puan başarısı.',
+    iconName: 'Award',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50 text-purple-700',
+    borderColor: 'border-purple-200',
+  },
+  {
+    type: 'high_improver',
+    title: 'Sürekli Gelişim',
+    description: 'Kendi performansını düzenli olarak artıran azimli gelişim.',
+    iconName: 'TrendingUp',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50 text-blue-700',
+    borderColor: 'border-blue-200',
+  },
+  {
+    type: 'team_player',
+    title: 'Sınıf Dostu',
+    description: 'Grup çalışmalarında yardımseverliği ve pozitif uyumu ile seviliyor.',
+    iconName: 'Heart',
+    color: 'text-rose-600',
+    bgColor: 'bg-rose-50 text-rose-700',
+    borderColor: 'border-rose-200',
+  },
+];
+
+export const INITIAL_BADGES: StudentBadge[] = [
+  {
+    id: 'bdg-1',
+    studentId: 'std-101',
+    classId: 'class-1',
+    badgeType: 'class_leader',
+    title: 'Derse Katılım Lideri',
+    description: 'Derse aktif katılımı ve parmak kaldırarak katkısıyla fark yarattı.',
+    iconName: 'Zap',
+    awardedAt: '2026-02-10',
+    awardedBy: 'Demo Öğretmen',
+    note: 'Matematik derslerinde sorulan zor sorulara hızlı cevap veriyor.',
+  },
+  {
+    id: 'bdg-2',
+    studentId: 'std-102',
+    classId: 'class-1',
+    badgeType: 'notebook_pro',
+    title: 'Defter Düzen Ustası',
+    description: 'Ders defterini kusursuz, intizamlı ve eksiksiz tutuyor.',
+    iconName: 'BookOpen',
+    awardedAt: '2026-02-12',
+    awardedBy: 'Demo Öğretmen',
+    note: 'Defter kontrolünde %100 tam puan aldı.',
+  },
+  {
+    id: 'bdg-3',
+    studentId: 'std-104',
+    classId: 'class-1',
+    badgeType: 'homework_master',
+    title: 'Ödev Şampiyonu',
+    description: 'Verilen tüm ödevleri eksiksiz ve zamanında teslim etti.',
+    iconName: 'Trophy',
+    awardedAt: '2026-02-14',
+    awardedBy: 'Demo Öğretmen',
+    note: 'Dönem başından bu yana tüm ödevleri tam.',
+  },
+];
+
+export const INITIAL_PARENT_MEETING_LOGS: ParentMeetingLog[] = [
+  {
+    id: 'pml-1',
+    studentId: 'std-101',
+    classId: 'class-1',
+    date: '2026-02-10',
+    parentName: 'Mehmet Yılmaz',
+    summary: 'Ahmet\'in matematik olympiyat çalışmaları ve ders katılımı değerlendirildi. Veliye teşekkür edildi.',
+    tone: 'encouraging',
+    actionTaken: 'Evde hafta sonu ek soru çözümü teşviki kararlaştırıldı.',
+    createdAt: '2026-02-10T15:30:00.000Z',
+  },
 ];
 
 

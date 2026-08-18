@@ -89,6 +89,8 @@ interface FeedbackViewProps {
   onOpenNotificationSettings?: () => void;
   dashboardLayout?: DashboardLayoutConfig;
   onOpenDashboardCustomize?: () => void;
+  onOpenOfficialReport?: () => void;
+  onOpenBadgeManagement?: () => void;
 }
 
 export const FeedbackView: React.FC<FeedbackViewProps> = ({
@@ -119,6 +121,8 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
   onOpenNotificationSettings,
   dashboardLayout,
   onOpenDashboardCustomize,
+  onOpenOfficialReport,
+  onOpenBadgeManagement,
 }) => {
   const classStudents = currentClass ? students.filter((s) => s.classId === currentClass.id) : [];
 
@@ -382,8 +386,41 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
         </div>
       )}
 
-      {/* Top Navigation & Action Boxes (Max 2 cols on tablet/desktop, 1 col on mobile) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5">
+        {/* Box: E-Defter & Resmi İdare Raporu Modülü */}
+        {onOpenOfficialReport && (
+          <div 
+            id="btn-settings-official-report"
+            onClick={onOpenOfficialReport}
+            className="p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border transition-all cursor-pointer bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-indigo-500/40 hover:border-indigo-400 hover:ring-2 hover:ring-indigo-500/20"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600/50 text-indigo-100 border border-indigo-400/30 flex items-center justify-center shrink-0 shadow-2xs">
+                <FileCheck2 className="w-5 h-5 text-indigo-100" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs sm:text-sm font-black truncate text-white">
+                  E-Defter & Resmi İdare Raporu
+                </h4>
+                <p className="text-[11px] text-indigo-200/90 truncate mt-0.5">
+                  E-Defter günlükleri, evrak paketi & onaylı idare raporları
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenOfficialReport();
+              }}
+              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-xl transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              Aç <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Box 0: Tam Ekran Modu (Projeksiyon & Akıllı Tahta) */}
         <div 
           id="card-fullscreen-toggle"
@@ -703,6 +740,45 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
           >
             Ayarla <ArrowRight className="w-3.5 h-3.5" />
           </button>
+        </div>
+
+        {/* Box: Rozet Sistemi */}
+        <div 
+          onClick={() => {
+            if (onOpenBadgeManagement) {
+              onOpenBadgeManagement();
+            }
+          }}
+          className="bg-gradient-to-r from-amber-950/90 via-slate-900 to-amber-950 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xs flex items-center justify-between gap-3 border border-amber-500/40 hover:border-amber-400 hover:ring-2 hover:ring-amber-500/20 transition-all cursor-pointer"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 border border-amber-300 flex items-center justify-center shrink-0 shadow-2xs font-extrabold text-lg">
+              🏆
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-black truncate text-white">Rozet Sistemi</h4>
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-400 text-slate-950">
+                  Ödül & Başarı Yönetimi
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-200/90 truncate mt-0.5">
+                Verilen rozetleri düzenle, süreli yeni rozet ver, takdir belgeleri yazdır
+              </p>
+            </div>
+          </div>
+          {onOpenBadgeManagement && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenBadgeManagement();
+              }}
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black rounded-xl transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              Yönet <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Box 8: Veli İletişim & Bildirim Merkezi (En Altta) */}

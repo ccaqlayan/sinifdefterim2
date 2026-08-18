@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Student, NotebookControl, ClassRoom, NotebookStatus, 
-  PerformanceLog, QuizScore, Homework, HomeworkRecord, WeightSettings 
+  PerformanceLog, QuizScore, Homework, HomeworkRecord, WeightSettings, StudentBadge 
 } from '../types';
 import { StudentDetailModal } from './StudentDetailModal';
+import { isBadgeActive } from '../utils/badgeUtils';
 import { 
   BookMarked, Save, Sparkles, UserX, CheckCircle2, RotateCcw, 
   CheckCheck, Info, UserCheck, Calendar, Sliders, ExternalLink,
@@ -39,6 +40,7 @@ interface NotebookViewProps {
   homeworks?: Homework[];
   homeworkRecords?: HomeworkRecord[];
   weights?: WeightSettings;
+  badges?: StudentBadge[];
 }
 
 interface StudentNotebookState {
@@ -64,6 +66,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   homeworks = [],
   homeworkRecords = [],
   weights = { quizWeight: 40, plusMinusWeight: 30, homeworkWeight: 20, notebookWeight: 10 },
+  badges = [],
 }) => {
   const classStudents = students.filter((s) => s.classId === currentClass.id);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -432,7 +435,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         {val.isAbsent ? (
                           <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
                             Gelmeyen / Değerlendirilmedi (G)
@@ -454,6 +457,25 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                               : `Defter Yok (%${val.percentage})`}
                           </span>
                         )}
+
+                        {(() => {
+                          const stdBadges = badges.filter((b) => b.studentId === student.id && isBadgeActive(b));
+                          if (stdBadges.length === 0) return null;
+                          return (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {stdBadges.map((b) => (
+                                <span
+                                  key={b.id}
+                                  className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300/80 px-1.5 py-0.2 rounded font-black flex items-center gap-0.5"
+                                  title={b.title}
+                                >
+                                  <span>{b.icon || '🏆'}</span>
+                                  <span className="whitespace-nowrap">{b.title}</span>
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -587,6 +609,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
         homeworkRecords={homeworkRecords}
         notebookControls={notebookControls}
         weights={weights}
+        badges={badges}
         initialTab="notebook"
         onAddNotebookControl={onSaveNotebookControl}
         onUpdateNotebookControl={onUpdateNotebookControl}

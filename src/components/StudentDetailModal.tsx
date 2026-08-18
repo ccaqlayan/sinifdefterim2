@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Student, PerformanceLog, QuizScore, Homework, HomeworkRecord, 
-  NotebookControl, WeightSettings, ClassRoom, HomeworkStatus, PlusMinusCategory, NotebookStatus 
+  NotebookControl, WeightSettings, ClassRoom, HomeworkStatus, PlusMinusCategory, NotebookStatus, StudentBadge 
 } from '../types';
 import { calculateStudentOverallScore } from '../utils/calculations';
+import { BADGE_DEFINITIONS } from '../mockData';
+import { isBadgeActive, getBadgeRemainingDays } from '../utils/badgeUtils';
 import { 
   Award, BookOpen, PlusCircle, MinusCircle, Clock, X, Check, 
   CheckCircle2, FileText, Calendar, Phone, Mail, User, BookMarked, Sparkles,
-  Edit3, Trash2, Plus, Save, RotateCcw, AlertCircle
+  Edit3, Trash2, Plus, Save, RotateCcw, AlertCircle, Trophy, Star, Zap
 } from 'lucide-react';
 
 interface StudentDetailModalProps {
@@ -21,7 +23,8 @@ interface StudentDetailModalProps {
   homeworkRecords: HomeworkRecord[];
   notebookControls: NotebookControl[];
   weights: WeightSettings;
-  initialTab?: 'notebook' | 'homework' | 'quiz' | 'plusminus';
+  badges?: StudentBadge[];
+  initialTab?: 'notebook' | 'homework' | 'quiz' | 'plusminus' | 'badges';
   onUpdateNotebookControl?: (control: NotebookControl) => void;
   onDeleteNotebookControl?: (id: string) => void;
   onAddNotebookControl?: (control: Omit<NotebookControl, 'id'>) => void;
@@ -50,6 +53,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   homeworkRecords,
   notebookControls,
   weights,
+  badges = [],
   initialTab = 'notebook',
   onUpdateNotebookControl,
   onDeleteNotebookControl,
@@ -58,7 +62,9 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onDeletePlusMinusLog,
   onAddPlusMinusLog,
 }) => {
-  const [activeDetailTab, setActiveDetailTab] = useState<'homework' | 'quiz' | 'plusminus' | 'notebook'>(initialTab);
+  const [activeDetailTab, setActiveDetailTab] = useState<'homework' | 'quiz' | 'plusminus' | 'notebook' | 'badges'>(initialTab);
+
+  const studentBadges = student ? badges.filter((b) => b.studentId === student.id) : [];
 
   // Notebook editing state
   const [editingNotebookId, setEditingNotebookId] = useState<string | null>(null);
@@ -258,6 +264,21 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
                 {currentClass.name} ({currentClass.subject}) • Veli: {student.parentName || 'Girilmedi'}
               </p>
+              {studentBadges.length > 0 && (
+                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                  {studentBadges.map((b) => (
+                    <span
+                      key={b.id}
+                      className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300/80 flex items-center gap-1 cursor-pointer hover:bg-amber-200 transition-all"
+                      title={b.title}
+                      onClick={() => setActiveDetailTab('badges')}
+                    >
+                      <span>{b.icon || '🏆'}</span>
+                      <span className="whitespace-nowrap">{b.title}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -292,26 +313,26 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               İncelemek İstediğiniz Alanı Seçin:
             </label>
 
-            <div className="grid grid-cols-4 gap-1 sm:gap-2">
+            <div className="grid grid-cols-5 gap-1 sm:gap-1.5">
               {/* Defter Card */}
               <button
                 onClick={() => {
                   setActiveDetailTab('notebook');
                   setEditingNotebookId(null);
                 }}
-                className={`p-1.5 sm:p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                className={`p-1 sm:p-2 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   activeDetailTab === 'notebook'
                     ? 'bg-amber-500 text-white border-amber-600 shadow-sm ring-2 ring-amber-300'
                     : 'bg-amber-50/80 text-amber-950 border-amber-200 hover:bg-amber-100'
                 }`}
               >
                 <div className="flex items-center justify-between gap-0.5">
-                  <BookMarked className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
-                  <span className="text-[8px] sm:text-[10px] font-bold opacity-80">%{weights.notebookWeight}</span>
+                  <BookMarked className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                  <span className="text-[8px] sm:text-[9px] font-bold opacity-80">%{weights.notebookWeight}</span>
                 </div>
                 <div className="mt-1">
-                  <div className="text-[8px] sm:text-[10px] font-extrabold uppercase opacity-90 truncate" title="Defter Düzeni">Defter</div>
-                  <div className="text-[10px] sm:text-sm font-black truncate">%{score.notebookAverage}</div>
+                  <div className="text-[8px] sm:text-[9px] font-extrabold uppercase opacity-90 truncate" title="Defter Düzeni">Defter</div>
+                  <div className="text-[10px] sm:text-xs font-black truncate">%{score.notebookAverage}</div>
                 </div>
               </button>
 
@@ -321,57 +342,76 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                   setActiveDetailTab('plusminus');
                   setEditingLogId(null);
                 }}
-                className={`p-1.5 sm:p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                className={`p-1 sm:p-2 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   activeDetailTab === 'plusminus'
                     ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-300'
                     : 'bg-emerald-50/80 text-emerald-950 border-emerald-200 hover:bg-emerald-100'
                 }`}
               >
                 <div className="flex items-center justify-between gap-0.5">
-                  <PlusCircle className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
-                  <span className="text-[8px] sm:text-[10px] font-bold opacity-80">%{weights.plusMinusWeight}</span>
+                  <PlusCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                  <span className="text-[8px] sm:text-[9px] font-bold opacity-80">%{weights.plusMinusWeight}</span>
                 </div>
                 <div className="mt-1">
-                  <div className="text-[8px] sm:text-[10px] font-extrabold uppercase opacity-90 truncate" title="Derse Katılım">Katılım</div>
-                  <div className="text-[10px] sm:text-sm font-black truncate">+{score.plusCount} / -{score.minusCount}</div>
+                  <div className="text-[8px] sm:text-[9px] font-extrabold uppercase opacity-90 truncate" title="Derse Katılım">Katılım</div>
+                  <div className="text-[10px] sm:text-xs font-black truncate">+{score.plusCount}/-{score.minusCount}</div>
                 </div>
               </button>
 
               {/* Quiz Card */}
               <button
                 onClick={() => setActiveDetailTab('quiz')}
-                className={`p-1.5 sm:p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                className={`p-1 sm:p-2 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   activeDetailTab === 'quiz'
                     ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm ring-2 ring-indigo-300'
                     : 'bg-indigo-50/80 text-indigo-950 border-indigo-200 hover:bg-indigo-100'
                 }`}
               >
                 <div className="flex items-center justify-between gap-0.5">
-                  <Award className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
-                  <span className="text-[8px] sm:text-[10px] font-bold opacity-80">%{weights.quizWeight}</span>
+                  <Award className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                  <span className="text-[8px] sm:text-[9px] font-bold opacity-80">%{weights.quizWeight}</span>
                 </div>
                 <div className="mt-1">
-                  <div className="text-[8px] sm:text-[10px] font-extrabold uppercase opacity-90 truncate" title="Quiz / Sınav">Quiz</div>
-                  <div className="text-[10px] sm:text-sm font-black truncate">{score.quizAverage}</div>
+                  <div className="text-[8px] sm:text-[9px] font-extrabold uppercase opacity-90 truncate" title="Quiz / Sınav">Quiz</div>
+                  <div className="text-[10px] sm:text-xs font-black truncate">{score.quizAverage}</div>
                 </div>
               </button>
 
               {/* Ödev Card */}
               <button
                 onClick={() => setActiveDetailTab('homework')}
-                className={`p-1.5 sm:p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                className={`p-1 sm:p-2 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   activeDetailTab === 'homework'
                     ? 'bg-sky-500 text-white border-sky-600 shadow-sm ring-2 ring-sky-300'
                     : 'bg-sky-50/80 text-sky-950 border-sky-200 hover:bg-sky-100'
                 }`}
               >
                 <div className="flex items-center justify-between gap-0.5">
-                  <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
-                  <span className="text-[8px] sm:text-[10px] font-bold opacity-80">%{weights.homeworkWeight}</span>
+                  <BookOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                  <span className="text-[8px] sm:text-[9px] font-bold opacity-80">%{weights.homeworkWeight}</span>
                 </div>
                 <div className="mt-1">
-                  <div className="text-[8px] sm:text-[10px] font-extrabold uppercase opacity-90 truncate" title="Ödev Takip">Ödev</div>
-                  <div className="text-[10px] sm:text-sm font-black truncate">%{score.homeworkScore}</div>
+                  <div className="text-[8px] sm:text-[9px] font-extrabold uppercase opacity-90 truncate" title="Ödev Takip">Ödev</div>
+                  <div className="text-[10px] sm:text-xs font-black truncate">%{score.homeworkScore}</div>
+                </div>
+              </button>
+
+              {/* Rozetler Card */}
+              <button
+                onClick={() => setActiveDetailTab('badges')}
+                className={`p-1 sm:p-2 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                  activeDetailTab === 'badges'
+                    ? 'bg-purple-600 text-white border-purple-700 shadow-sm ring-2 ring-purple-300'
+                    : 'bg-purple-50/80 text-purple-950 border-purple-200 hover:bg-purple-100'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-0.5">
+                  <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-amber-300" />
+                  <span className="text-[8px] sm:text-[9px] font-bold opacity-80">{studentBadges.length} adet</span>
+                </div>
+                <div className="mt-1">
+                  <div className="text-[8px] sm:text-[9px] font-extrabold uppercase opacity-90 truncate" title="Başarı Rozetleri">Rozetler</div>
+                  <div className="text-[10px] sm:text-xs font-black truncate">{studentBadges.length} Rozet</div>
                 </div>
               </button>
             </div>
@@ -945,6 +985,88 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                       </div>
                     );
                   })
+                )}
+              </div>
+            )}
+
+            {/* 5. BAŞARI ROZETLERİ VE DİJİTAL SERTİFİKALAR */}
+            {activeDetailTab === 'badges' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-1.5">
+                    <Trophy className="w-4 h-4 text-amber-500" />
+                    <h4 className="text-xs font-black text-purple-950 uppercase">
+                      Kazanılan Başarı Rozetleri ({studentBadges.length})
+                    </h4>
+                  </div>
+                  <span className="text-xs font-black text-purple-700 bg-purple-100 px-2 py-0.5 rounded-lg border border-purple-200">
+                    Sınıf Derecesi
+                  </span>
+                </div>
+
+                {studentBadges.length === 0 ? (
+                  <div className="p-6 text-center text-slate-500 text-xs bg-white rounded-2xl border border-dashed border-slate-300">
+                    <Trophy className="w-10 h-10 text-amber-300 mx-auto mb-2 opacity-60" />
+                    <p className="font-bold text-slate-700">Henüz Verilmiş Rozet Bulunmuyor</p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Öğretmen panelinden veya Ayarlar -&gt; Rozet Sistemi alanından öğrenciye yeni başarı rozeti verebilirsiniz.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {studentBadges.map((badge) => {
+                      const def = BADGE_DEFINITIONS.find((b) => b.type === badge.badgeType);
+                      const active = isBadgeActive(badge);
+                      const remaining = getBadgeRemainingDays(badge);
+
+                      return (
+                        <div
+                          key={badge.id}
+                          className={`p-3 rounded-2xl border shadow-xs flex items-start gap-3 relative overflow-hidden group transition-all ${
+                            active
+                              ? 'bg-gradient-to-br from-amber-500/10 via-purple-500/5 to-slate-50 border-amber-300/60 hover:border-amber-400'
+                              : 'bg-slate-50/80 border-slate-200 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center font-black text-2xl shadow-sm shrink-0 group-hover:scale-105 transition-transform ${
+                            active
+                              ? 'bg-gradient-to-tr from-amber-400 to-amber-200 border-amber-300 text-amber-950'
+                              : 'bg-slate-200 border-slate-300 text-slate-600'
+                          }`}>
+                            {badge.icon || '🏆'}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1 flex-wrap">
+                              <h5 className="text-xs font-black text-slate-900 leading-snug break-words">
+                                {badge.title || def?.title || 'Başarı Rozeti'}
+                              </h5>
+                              {active ? (
+                                <span className="text-[9px] font-extrabold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md border border-emerald-300 shrink-0">
+                                  Aktif {remaining !== null ? `(${remaining} gün)` : '(Kalıcı)'}
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-bold text-slate-600 bg-slate-200 px-1.5 py-0.5 rounded-md border border-slate-300 shrink-0">
+                                  Süresi Doldu (Geçmiş)
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[9.5px] font-medium text-slate-400 mt-0.5">
+                              Veriliş: {badge.awardedAt} {badge.expiresAt ? `• Bitiş: ${badge.expiresAt}` : ''}
+                            </div>
+                            <p className="text-[10.5px] text-slate-700 font-medium mt-1 leading-relaxed break-words">
+                              {badge.description || def?.description}
+                            </p>
+                            {badge.note && (
+                              <p className="text-[9.5px] italic text-purple-700 bg-purple-50 p-1.5 rounded-lg border border-purple-200/60 mt-1">
+                                "{badge.note}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             )}

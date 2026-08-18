@@ -20,7 +20,7 @@ import {
   formatFriendlyDateTR,
   toDateString,
 } from '../utils/weeklyUtils';
-import { DAY_FULL_NAMES, ALL_DAYS } from '../utils/scheduleUtils';
+import { DAY_FULL_NAMES, ALL_DAYS, findMatchingClass } from '../utils/scheduleUtils';
 import {
   Calendar,
   ChevronLeft,
@@ -346,12 +346,43 @@ export const WeeklySummaryView: React.FC<WeeklySummaryViewProps> = ({
     return list;
   }, [weeklyQuizzes, quizzes, targetStudentIds]);
 
+  // Helper to normalize day string to Pzt, Sal, Çar, Per, Cum, Cmt, Paz
+  const normalizeDayKey = (dayStr: string): string => {
+    if (!dayStr) return 'Pzt';
+    const d = dayStr.trim();
+    if (d.startsWith('Pzt') || d.toLowerCase().startsWith('pazartesi') || d === 'Mon') return 'Pzt';
+    if (d.startsWith('Sal') || d.toLowerCase().startsWith('salı') || d === 'Tue') return 'Sal';
+    if (d.startsWith('Çar') || d.toLowerCase().startsWith('çarşamba') || d === 'Wed') return 'Çar';
+    if (d.startsWith('Per') || d.toLowerCase().startsWith('perşembe') || d === 'Thu') return 'Per';
+    if (d.startsWith('Cum') || d.toLowerCase().startsWith('cuma') || d === 'Fri') return 'Cum';
+    if (d.startsWith('Cmt') || d.toLowerCase().startsWith('cumartesi') || d === 'Sat') return 'Cmt';
+    if (d.startsWith('Paz') || d.toLowerCase().startsWith('pazar') || d === 'Sun') return 'Paz';
+    return d;
+  };
+
   // 10. Schedule Lesson Hours
   const weeklyScheduleStats = useMemo(() => {
     const activeDays = scheduleConfig?.activeDays || ['Pzt', 'Sal', 'Çar', 'Per', 'Cum'];
+    const normalizedActiveDays = activeDays.map((d) => normalizeDayKey(d));
+
     const filteredLessons = scheduleLessons.filter((l) => {
-      if (!activeDays.includes(l.day)) return false;
-      if (classFilter !== 'all' && l.classId !== classFilter) return false;
+      const dayKey = normalizeDayKey(l.day);
+      if (!normalizedActiveDays.includes(dayKey)) return false;
+
+      if (classFilter !== 'all') {
+        const matchedClass = findMatchingClass(l, classes);
+        const resolvedClassId = matchedClass?.id || l.classId;
+        if (resolvedClassId) {
+          if (resolvedClassId !== classFilter) return false;
+        } else {
+          const selectedCls = classes.find((c) => c.id === classFilter);
+          if (selectedCls) {
+            const lessonText = `${l.title || ''} ${l.className || ''} ${l.shortName || ''}`.toLowerCase();
+            const clsText = selectedCls.name.toLowerCase();
+            if (!lessonText.includes(clsText)) return false;
+          }
+        }
+      }
       return true;
     });
 
@@ -368,8 +399,18 @@ export const WeeklySummaryView: React.FC<WeeklySummaryViewProps> = ({
     const classBreakdown: { [className: string]: number } = {};
 
     filteredLessons.forEach((l) => {
-      dayBreakdown[l.day] = (dayBreakdown[l.day] || 0) + 1;
-      const clsName = classes.find((c) => c.id === l.classId)?.name || l.shortName || l.title || 'Diğer';
+      const dayKey = normalizeDayKey(l.day);
+      dayBreakdown[dayKey] = (dayBreakdown[dayKey] || 0) + 1;
+
+      const matchedClass = findMatchingClass(l, classes);
+      const clsName =
+        matchedClass?.name ||
+        classes.find((c) => c.id === l.classId)?.name ||
+        l.className ||
+        l.shortName ||
+        l.title ||
+        'Diğer';
+
       classBreakdown[clsName] = (classBreakdown[clsName] || 0) + 1;
     });
 
@@ -910,14 +951,17 @@ export const WeeklySummaryView: React.FC<WeeklySummaryViewProps> = ({
       {/* SECTION 3: LESSON HOURS & SCHEDULE TIMETABLE (İşlenen Ders Saatleri) */}
       {sectionSettings.showLessonHours && (
         <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-2xs border border-slate-200/90 space-y-3.5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+              <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
                 <Clock className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm sm:text-base font-black text-slate-900">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
                   İşlenen Ders Saatleri & Program Dağılımı
+                  <span className="text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-full">
+                    {weeklyScheduleStats.totalHours} Ders Saati
+                  </span>
                 </h3>
                 <p className="text-[11px] text-slate-500 font-medium">
                   Haftalık çizelgedeki toplam ders saati ve günlere göre dağılım
@@ -926,49 +970,67 @@ export const WeeklySummaryView: React.FC<WeeklySummaryViewProps> = ({
             </div>
             <button
               onClick={() => onNavigateTab('schedule')}
-              className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1"
+              className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 cursor-pointer shrink-0"
             >
               Programı Aç →
             </button>
           </div>
 
-          {/* Daily Schedule Hour Pills */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
-            {ALL_DAYS.slice(0, 5).map((dayKey) => {
-              const hours = weeklyScheduleStats.dayBreakdown[dayKey] || 0;
-              return (
-                <div
-                  key={dayKey}
-                  className={`p-2.5 rounded-2xl border transition-all ${
-                    hours > 0
-                      ? 'bg-blue-50/50 border-blue-200/80 text-blue-950'
-                      : 'bg-slate-50 border-slate-200 text-slate-400'
-                  }`}
-                >
-                  <span className="text-[10px] font-bold text-slate-500 block">
-                    {DAY_FULL_NAMES[dayKey]}
-                  </span>
-                  <span className="text-sm font-black text-slate-900 block mt-0.5">
-                    {hours} <span className="text-[11px] font-semibold text-slate-500">Saat</span>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Class Breakdown Pills */}
-          {Object.keys(weeklyScheduleStats.classBreakdown).length > 0 && (
-            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-slate-500">Sınıf Dağılımı:</span>
-              {Object.entries(weeklyScheduleStats.classBreakdown).map(([clsName, count]) => (
-                <span
-                  key={clsName}
-                  className="bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-1 rounded-xl border border-slate-200"
-                >
-                  {clsName}: <strong className="text-blue-700">{count} Saat</strong>
-                </span>
-              ))}
+          {weeklyScheduleStats.totalHours === 0 ? (
+            <div className="p-5 text-center text-xs text-blue-800 bg-blue-50/50 rounded-2xl border border-dashed border-blue-200 space-y-1.5">
+              <p className="font-extrabold text-blue-950">Seçili Sınıf İçin Ders Programı Tanımlanmamış</p>
+              <p className="text-[11px] text-blue-700 max-w-md mx-auto">
+                Haftalık ders programınızı oluşturmak veya güncellemek için ders çizelgesi modülünü kullanabilirsiniz.
+              </p>
+              <button
+                onClick={() => onNavigateTab('schedule')}
+                className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Ders Programını Yönet</span>
+              </button>
             </div>
+          ) : (
+            <>
+              {/* Daily Schedule Hour Pills */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                {ALL_DAYS.slice(0, 5).map((dayKey) => {
+                  const hours = weeklyScheduleStats.dayBreakdown[dayKey] || 0;
+                  return (
+                    <div
+                      key={dayKey}
+                      className={`p-2.5 rounded-2xl border transition-all ${
+                        hours > 0
+                          ? 'bg-blue-50/50 border-blue-200/80 text-blue-950'
+                          : 'bg-slate-50 border-slate-200 text-slate-400'
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold text-slate-500 block">
+                        {DAY_FULL_NAMES[dayKey]}
+                      </span>
+                      <span className="text-sm font-black text-slate-900 block mt-0.5">
+                        {hours} <span className="text-[11px] font-semibold text-slate-500">Saat</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Class Breakdown Pills */}
+              {Object.keys(weeklyScheduleStats.classBreakdown).length > 0 && (
+                <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">Sınıf Dağılımı:</span>
+                  {Object.entries(weeklyScheduleStats.classBreakdown).map(([clsName, count]) => (
+                    <span
+                      key={clsName}
+                      className="bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-1 rounded-xl border border-slate-200"
+                    >
+                      {clsName}: <strong className="text-blue-700">{count} Saat</strong>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

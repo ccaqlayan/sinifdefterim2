@@ -13,8 +13,10 @@ import {
   HomeworkStatus,
   AcademicYearConfig,
   ActiveTermSelection,
+  StudentBadge,
 } from '../types';
 import { calculateStudentOverallScore } from '../utils/calculations';
+import { isBadgeActive } from '../utils/badgeUtils';
 import { exportTermScoresToExcel } from '../utils/excel';
 import {
   filterLogsByTerm,
@@ -59,9 +61,13 @@ interface ReportsViewProps {
   homeworkRecords: HomeworkRecord[];
   notebookControls: NotebookControl[];
   weights: WeightSettings;
+  badges?: StudentBadge[];
   onUpdateWeights: (weights: WeightSettings) => void;
   academicYearConfig: AcademicYearConfig;
   onOpenAcademicSettings?: () => void;
+  onOpenOfficialReport?: () => void;
+  onOpenParentMeetingModal?: () => void;
+  onOpenBadgeManagement?: () => void;
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({
@@ -73,16 +79,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   homeworkRecords,
   notebookControls,
   weights,
+  badges = [],
   onUpdateWeights,
   academicYearConfig,
   onOpenAcademicSettings,
+  onOpenOfficialReport,
+  onOpenParentMeetingModal,
+  onOpenBadgeManagement,
 }) => {
   const [selectedTerm, setSelectedTerm] = useState<ActiveTermSelection>(
     academicYearConfig.activeTermId || 'term2'
   );
   const [showWeightSettings, setShowWeightSettings] = useState(false);
   const [selectedStudentScore, setSelectedStudentScore] = useState<OverallTermScore | null>(null);
-  const [activeDetailTab, setActiveDetailTab] = useState<'homework' | 'quiz' | 'plusminus' | 'notebook'>('homework');
+  const [activeDetailTab, setActiveDetailTab] = useState<'homework' | 'quiz' | 'plusminus' | 'notebook' | 'badges'>('homework');
 
   const classStudents = students.filter((s) => s.classId === currentClass.id);
 
@@ -145,7 +155,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </div>
           </div>
 
-          <div className="absolute top-3 right-3 sm:relative sm:top-auto sm:right-auto shrink-0">
+          <div className="absolute top-3 right-3 sm:relative sm:top-auto sm:right-auto shrink-0 flex items-center gap-1.5 flex-wrap">
+            {onOpenParentMeetingModal && (
+              <button
+                onClick={onOpenParentMeetingModal}
+                className="p-2 sm:px-3 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="AI Destekli Veli Görüşme Özeti Hazırla"
+              >
+                <Sparkles className="w-4 h-4 text-purple-200" />
+                <span className="hidden sm:inline">Veli Özeti</span>
+              </button>
+            )}
+
             <button
               onClick={handleExportExcel}
               className="p-2 sm:px-3.5 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
@@ -421,9 +442,33 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0 group-hover:border-indigo-400 transition-all"
                   />
                   <div>
-                    <h5 className="text-xs font-extrabold text-slate-900 group-hover:text-indigo-600 transition-all">
-                      #{score.studentNumber} {score.studentName}
-                    </h5>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h5 className="text-xs font-extrabold text-slate-900 group-hover:text-indigo-600 transition-all">
+                        #{score.studentNumber} {score.studentName}
+                      </h5>
+                      {(() => {
+                        const stdBadges = badges.filter((b) => b.studentId === score.studentId && isBadgeActive(b));
+                        if (stdBadges.length === 0) return null;
+                        return (
+                          <div className="flex items-center gap-1">
+                            {stdBadges.slice(0, 3).map((b) => (
+                              <span
+                                key={b.id}
+                                className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300/80 px-1 py-0.2 rounded font-black flex items-center gap-0.5"
+                                title={b.title}
+                              >
+                                {b.icon || '🏆'}
+                              </span>
+                            ))}
+                            {stdBadges.length > 3 && (
+                              <span className="text-[9px] font-extrabold text-amber-800 bg-amber-50 px-1 rounded">
+                                +{stdBadges.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
                     <span className="text-[10px] text-slate-500 font-medium">{score.letterGrade}</span>
                   </div>
                 </div>
@@ -517,6 +562,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <p className="text-xs text-indigo-200 font-medium">
                     Öğrenci Detaylı Performans Raporu
                   </p>
+                  {(() => {
+                    const stdBadges = badges.filter((b) => b.studentId === activeStudentScore.studentId && isBadgeActive(b));
+                    if (stdBadges.length === 0) return null;
+                    return (
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        {stdBadges.map((b) => (
+                          <span
+                            key={b.id}
+                            className="text-[10px] bg-amber-400/90 text-slate-950 font-black px-1.5 py-0.2 rounded flex items-center gap-0.5 shadow-2xs"
+                            title={b.title}
+                          >
+                            <span>{b.icon || '🏆'}</span>
+                            <span className="whitespace-nowrap">{b.title}</span>
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -587,6 +650,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 }`}
               >
                 Defter Kontrolü
+              </button>
+              <button
+                onClick={() => setActiveDetailTab('badges')}
+                className={`flex-1 py-2.5 px-3 border-b-2 text-center transition-all cursor-pointer whitespace-nowrap ${
+                  activeDetailTab === 'badges'
+                    ? 'border-purple-600 text-purple-700 bg-white font-extrabold'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Rozetler ({badges.filter((b) => b.studentId === activeStudentScore.studentId).length})
               </button>
             </div>
 
@@ -826,6 +899,56 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                         )}
                       </div>
                     ));
+                  })()}
+                </div>
+              )}
+
+              {/* 5. ROZETLER DETAYI */}
+              {activeDetailTab === 'badges' && (
+                <div className="space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <h4 className="text-xs font-black text-purple-900 flex items-center gap-1.5 uppercase">
+                      <Award className="w-4 h-4 text-purple-600" /> Kazanılan Rozetler ve Ödüller
+                    </h4>
+                    <span className="text-xs font-black text-purple-700 bg-purple-100 px-2 py-0.5 rounded-lg border border-purple-200">
+                      Toplu Rozet: {badges.filter((b) => b.studentId === activeStudentScore.studentId).length} Adet
+                    </span>
+                  </div>
+
+                  {(() => {
+                    const studentBadgesList = badges.filter((b) => b.studentId === activeStudentScore.studentId);
+                    if (studentBadgesList.length === 0) {
+                      return (
+                        <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-1">
+                          <p className="font-bold text-slate-600">Henüz Verilmiş Rozet Bulunmuyor</p>
+                          <p className="text-[11px]">Rozet Yönetimi modülünden öğrenciye özel veya sınıfa toplu rozet verebilirsiniz.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {studentBadgesList.map((badge) => (
+                          <div
+                            key={badge.id}
+                            className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-3 flex items-start gap-3 shadow-2xs"
+                          >
+                            <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300 text-2xl flex items-center justify-center shrink-0 shadow-xs">
+                              {badge.icon || '🏆'}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h5 className="text-xs font-extrabold text-amber-950 break-words">{badge.title}</h5>
+                              {badge.description && (
+                                <p className="text-[11px] text-amber-800/80 mt-0.5 line-clamp-2">{badge.description}</p>
+                              )}
+                              <p className="text-[10px] text-amber-700/60 font-semibold mt-1">
+                                Veriliş Tarihi: {badge.awardedAt}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
                   })()}
                 </div>
               )}

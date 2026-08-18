@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Student, Quiz, QuizScore, Homework, HomeworkRecord, ClassRoom, HomeworkStatus, User as UserType, AcademicYearConfig } from '../types';
+import { Student, Quiz, QuizScore, Homework, HomeworkRecord, ClassRoom, HomeworkStatus, User as UserType, AcademicYearConfig, StudentBadge } from '../types';
 import { getHomeworkDueDateTimestamp } from '../utils/homeworkUrgencyUtils';
+import { isBadgeActive } from '../utils/badgeUtils';
 import { HomeworkChecklistModal } from './HomeworkChecklistModal';
 import { 
   Award, BookOpen, Plus, Sparkles, Clock, Check, X, Wand2, 
@@ -36,6 +37,7 @@ interface QuizAndHomeworkViewProps {
   onPermanentDeleteHomework: (hwId: string) => void;
   onUpdateHomeworkRecord: (record: Omit<HomeworkRecord, 'id'>) => void;
   onBatchUpdateHomeworkRecords: (records: Omit<HomeworkRecord, 'id'>[]) => void;
+  badges?: StudentBadge[];
 }
 
 export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
@@ -65,6 +67,7 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
   onPermanentDeleteHomework,
   onUpdateHomeworkRecord,
   onBatchUpdateHomeworkRecords,
+  badges = [],
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'quizzes' | 'homeworks' | 'trash'>(initialSubTab);
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
@@ -770,7 +773,27 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
                               <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 flex items-center gap-1">
                                 {std.name} {std.surname}
                               </p>
-                              <span className="text-[10px] text-slate-400 font-medium">No: {std.number}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] text-slate-400 font-medium">No: {std.number}</span>
+                                {(() => {
+                                  const stdBadges = badges.filter((b) => b.studentId === std.id && isBadgeActive(b));
+                                  if (stdBadges.length === 0) return null;
+                                  return (
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                      {stdBadges.map((b) => (
+                                        <span
+                                          key={b.id}
+                                          className="text-[9px] bg-amber-100 text-amber-900 border border-amber-300/80 px-1 py-0.2 rounded font-black flex items-center gap-0.5"
+                                          title={b.title}
+                                        >
+                                          <span>{b.icon || '🏆'}</span>
+                                          <span className="whitespace-nowrap">{b.title}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
                           </div>
 
@@ -1831,6 +1854,24 @@ export const QuizAndHomeworkView: React.FC<QuizAndHomeworkViewProps> = ({
                       {studentQuizHistoryModal.name} {studentQuizHistoryModal.surname}
                     </h3>
                     <p className="text-xs text-slate-500">Geçmiş Quiz Performansı</p>
+                    {(() => {
+                      const stdBadges = badges.filter((b) => b.studentId === studentQuizHistoryModal.id && isBadgeActive(b));
+                      if (stdBadges.length === 0) return null;
+                      return (
+                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                          {stdBadges.map((b) => (
+                            <span
+                              key={b.id}
+                              className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300/80 px-1.5 py-0.2 rounded font-black flex items-center gap-0.5"
+                              title={b.title}
+                            >
+                              <span>{b.icon || '🏆'}</span>
+                              <span className="whitespace-nowrap">{b.title}</span>
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
                 <button onClick={() => setStudentQuizHistoryModal(null)} className="text-slate-400 hover:text-slate-600">

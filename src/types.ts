@@ -190,6 +190,68 @@ export interface ParentFeedbackLog {
   notes?: string;
 }
 
+// ----------------------------------------------------
+// BAŞARI ROZETLERİ (STUDENT ACHIEVEMENT BADGES) TYPES
+// ----------------------------------------------------
+export type BadgeType = string;
+
+export interface BadgeDefinition {
+  id?: string;
+  type: string;
+  title: string;
+  description: string;
+  iconName: string; // e.g. "Trophy", "Star", "Zap", "BookOpen", "Award", "TrendingUp", "Heart", "Shield", "Crown"
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  isCustom?: boolean;
+}
+
+export interface StudentBadge {
+  id: string;
+  studentId: string;
+  classId: string;
+  badgeType: BadgeType;
+  title: string;
+  description: string;
+  iconName: string; // e.g. "Trophy", "Star", "Zap", "BookOpen", "Award", "TrendingUp", "Heart"
+  icon?: string;
+  awardedAt: string;
+  awardedBy?: string;
+  note?: string;
+  durationDays?: number; // e.g., 7 (1 week default), 14, 30, or 0 (permanent)
+  expiresAt?: string;    // YYYY-MM-DD
+}
+
+// ----------------------------------------------------
+// VELİ GÖRÜŞME & TOPLANTI NOTLARI (PARENT MEETING LOGS)
+// ----------------------------------------------------
+export interface ParentMeetingLog {
+  id: string;
+  studentId: string;
+  classId: string;
+  date: string;
+  parentName?: string;
+  summary: string;
+  tone?: 'encouraging' | 'balanced' | 'focus_needed';
+  actionTaken?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+// ----------------------------------------------------
+// DÖNEM SONU İDARE & E-DEFTER RAPOR AYARLARI
+// ----------------------------------------------------
+export interface OfficialReportConfig {
+  reportType: 'term_summary' | 'e_defter' | 'homework_quiz_detail';
+  term: 'term1' | 'term2' | 'all';
+  includeSignatures: boolean;
+  schoolName: string;
+  principalName?: string;
+  teacherName: string;
+  customNote?: string;
+}
+
 export interface OverallTermScore {
   studentId: string;
   studentName: string;
@@ -436,8 +498,10 @@ export type DashboardWidgetId =
   | 'last_lesson_log'
   | 'class_hero_summary'
   | 'class_selector_slider'
+  | 'weekly_stars'
   | 'student_risk_radar'
   | 'quick_actions_grid'
+  | 'quick_badge_award'
   | 'smart_warnings';
 
 export interface DashboardWidgetConfig {

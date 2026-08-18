@@ -6,18 +6,19 @@ import {
   ClassRoom, Student, PerformanceLog, Quiz, QuizScore, Homework, 
   HomeworkRecord, NotebookControl, WeightSettings, NotificationSetting, NotificationSettingsConfig, ParentFeedbackLog,
   User, LuckyDrawSettings, ScheduleConfig, ScheduleLesson, AcademicYearConfig, AuditLog, AnnualPlanItem, LessonLogNote,
-  DashboardLayoutConfig 
+  DashboardLayoutConfig, StudentBadge, ParentMeetingLog, RiskRadarConfig 
 } from '../types';
 import { 
   INITIAL_CLASSES, INITIAL_STUDENTS, INITIAL_PLUS_MINUS_LOGS, 
   INITIAL_QUIZ_DEFINITIONS, INITIAL_QUIZZES, INITIAL_HOMEWORKS, INITIAL_HOMEWORK_RECORDS, 
   INITIAL_NOTEBOOK_CONTROLS, INITIAL_WEIGHT_SETTINGS, 
   INITIAL_NOTIFICATION_SETTINGS, DEFAULT_NOTIFICATION_CONFIG, INITIAL_FEEDBACK_LOGS, INITIAL_AUDIT_LOGS,
-  INITIAL_LESSON_LOGS 
+  INITIAL_LESSON_LOGS, INITIAL_BADGES, BADGE_DEFINITIONS 
 } from '../mockData';
 import { DEFAULT_SCHEDULE_CONFIG, INITIAL_SCHEDULE_LESSONS } from '../utils/scheduleUtils';
 import { DEFAULT_ACADEMIC_YEAR_CONFIG } from '../utils/termUtils';
 import { DEFAULT_DASHBOARD_LAYOUT, normalizeDashboardLayout } from '../utils/dashboardLayoutUtils';
+import { DEFAULT_RISK_RADAR_CONFIG } from '../utils/studentRiskUtils';
 import { Storage } from '../utils/storage';
 
 enum OperationType {
@@ -106,6 +107,9 @@ const COLS = {
   AUDIT_LOGS: 'auditLogs',
   ANNUAL_PLANS: 'annualPlans',
   LESSON_LOGS: 'lessonLogs',
+  STUDENT_BADGES: 'studentBadges',
+  BADGE_DEFINITIONS: 'badgeDefinitions',
+  PARENT_MEETING_LOGS: 'parentMeetingLogs',
 };
 
 // Seed initial data for user if empty
@@ -157,6 +161,12 @@ export async function seedInitialDataIfEmpty(userId: string = 'usr-demo-teacher'
       }
       for (const ll of INITIAL_LESSON_LOGS) {
         await setDoc(doc(db, 'users', safeUid, COLS.LESSON_LOGS, ll.id), sanitizeForFirestore(ll));
+      }
+      for (const b of INITIAL_BADGES) {
+        await setDoc(doc(db, 'users', safeUid, COLS.STUDENT_BADGES, b.id), sanitizeForFirestore(b));
+      }
+      for (const bd of BADGE_DEFINITIONS) {
+        await setDoc(doc(db, 'users', safeUid, COLS.BADGE_DEFINITIONS, bd.id || bd.type), sanitizeForFirestore(bd));
       }
     }
 
@@ -1070,6 +1080,163 @@ export async function saveDashboardLayoutToFirebase(userId: string, layout: Dash
     );
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/settings/dashboardLayout`);
+  }
+}
+
+// ----------------------------------------------------
+// ÖĞRENCİ RİSK RADARI YAPILANDIRMASI SYNC
+// ----------------------------------------------------
+
+export function subscribeRiskConfig(userId: string, callback: (config: RiskRadarConfig) => void) {
+  const safeUid = getSafeUserId(userId);
+  return onSnapshot(
+    doc(db, 'users', safeUid, 'settings', 'riskConfig'),
+    (snap) => {
+      if (snap.exists()) {
+        callback(snap.data() as RiskRadarConfig);
+      } else {
+        callback(DEFAULT_RISK_RADAR_CONFIG);
+      }
+    },
+    (err) => handleFirestoreError(err, OperationType.GET, `users/${safeUid}/settings/riskConfig`)
+  );
+}
+
+export async function saveRiskConfigToFirebase(userId: string, config: RiskRadarConfig) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await setDoc(
+      doc(db, 'users', safeUid, 'settings', 'riskConfig'),
+      sanitizeForFirestore(config),
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/settings/riskConfig`);
+  }
+}
+
+// ----------------------------------------------------
+// BAŞARI ROZETLERİ (STUDENT BADGES) SYNC
+// ----------------------------------------------------
+
+export function subscribeBadges(userId: string, callback: (badges: StudentBadge[]) => void) {
+  const safeUid = getSafeUserId(userId);
+  return onSnapshot(
+    collection(db, 'users', safeUid, COLS.STUDENT_BADGES),
+    (snap) => {
+      const items: StudentBadge[] = snap.docs.map((d) => d.data() as StudentBadge);
+      callback(items);
+    },
+    (err) => handleFirestoreError(err, OperationType.GET, `users/${safeUid}/${COLS.STUDENT_BADGES}`)
+  );
+}
+
+export async function saveBadgeToFirebase(userId: string, badge: StudentBadge) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await setDoc(
+      doc(db, 'users', safeUid, COLS.STUDENT_BADGES, badge.id),
+      sanitizeForFirestore(badge),
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/${COLS.STUDENT_BADGES}/${badge.id}`);
+  }
+}
+
+export async function deleteBadgeFromFirebase(userId: string, badgeId: string) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await deleteDoc(doc(db, 'users', safeUid, COLS.STUDENT_BADGES, badgeId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `users/${safeUid}/${COLS.STUDENT_BADGES}/${badgeId}`);
+  }
+}
+
+// ----------------------------------------------------
+// ROZET TANIMLARI (BADGE DEFINITIONS) SYNC
+// ----------------------------------------------------
+
+export function subscribeBadgeDefinitions(userId: string, callback: (defs: BadgeDefinition[]) => void) {
+  const safeUid = getSafeUserId(userId);
+  return onSnapshot(
+    collection(db, 'users', safeUid, COLS.BADGE_DEFINITIONS),
+    (snap) => {
+      const items: BadgeDefinition[] = snap.docs.map((d) => d.data() as BadgeDefinition);
+      if (items.length > 0) {
+        callback(items);
+      }
+    },
+    (err) => handleFirestoreError(err, OperationType.GET, `users/${safeUid}/${COLS.BADGE_DEFINITIONS}`)
+  );
+}
+
+export async function saveBadgeDefinitionToFirebase(userId: string, def: BadgeDefinition) {
+  const safeUid = getSafeUserId(userId);
+  const defId = def.id || def.type;
+  try {
+    await setDoc(
+      doc(db, 'users', safeUid, COLS.BADGE_DEFINITIONS, defId),
+      sanitizeForFirestore(def),
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/${COLS.BADGE_DEFINITIONS}/${defId}`);
+  }
+}
+
+export async function deleteBadgeDefinitionFromFirebase(userId: string, defIdOrType: string) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await deleteDoc(doc(db, 'users', safeUid, COLS.BADGE_DEFINITIONS, defIdOrType));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `users/${safeUid}/${COLS.BADGE_DEFINITIONS}/${defIdOrType}`);
+  }
+}
+
+export async function saveAllBadgeDefinitionsToFirebase(userId: string, defs: BadgeDefinition[]) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    for (const def of defs) {
+      const defId = def.id || def.type;
+      await setDoc(
+        doc(db, 'users', safeUid, COLS.BADGE_DEFINITIONS, defId),
+        sanitizeForFirestore(def),
+        { merge: true }
+      );
+    }
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/${COLS.BADGE_DEFINITIONS}`);
+  }
+}
+
+// ----------------------------------------------------
+// VELİ GÖRÜŞME VE TOPLANTI NOTLARI SYNC
+// ----------------------------------------------------
+
+export function subscribeParentMeetingLogs(userId: string, callback: (logs: ParentMeetingLog[]) => void) {
+  const safeUid = getSafeUserId(userId);
+  return onSnapshot(
+    collection(db, 'users', safeUid, COLS.PARENT_MEETING_LOGS),
+    (snap) => {
+      const items: ParentMeetingLog[] = snap.docs.map((d) => d.data() as ParentMeetingLog);
+      items.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
+      callback(items);
+    },
+    (err) => handleFirestoreError(err, OperationType.GET, `users/${safeUid}/${COLS.PARENT_MEETING_LOGS}`)
+  );
+}
+
+export async function saveParentMeetingLogToFirebase(userId: string, log: ParentMeetingLog) {
+  const safeUid = getSafeUserId(userId);
+  try {
+    await setDoc(
+      doc(db, 'users', safeUid, COLS.PARENT_MEETING_LOGS, log.id),
+      sanitizeForFirestore(log),
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `users/${safeUid}/${COLS.PARENT_MEETING_LOGS}/${log.id}`);
   }
 }
 

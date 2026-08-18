@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ClassRoom,
   Student,
+  StudentBadge,
   PerformanceLog,
   Quiz,
   QuizScore,
@@ -27,6 +28,7 @@ import { StudentRiskWidget } from './StudentRiskWidget';
 import { LastLessonSummaryWidget } from './lessonLog/LastLessonSummaryWidget';
 import { getAllDashboardAlerts } from '../utils/dashboardAlertsUtils';
 import { DEFAULT_NOTIFICATION_CONFIG } from '../mockData';
+import { calculateBadgeExpiration } from '../utils/badgeUtils';
 import { DEFAULT_DASHBOARD_LAYOUT, normalizeDashboardLayout } from '../utils/dashboardLayoutUtils';
 import { motion } from 'motion/react';
 import {
@@ -48,6 +50,197 @@ import {
   Flame,
   SlidersHorizontal,
 } from 'lucide-react';
+
+const BADGE_PRESETS = [
+  { title: 'Örnek Öğrenci', icon: '🏆' },
+  { title: 'Derse Tam Katılım', icon: '🌟' },
+  { title: 'Kitap Kurdu & Ödev', icon: '📚' },
+  { title: 'Hızlı Soru Çözen', icon: '⚡' },
+  { title: 'Yaratıcı Düşünce', icon: '🎨' },
+  { title: 'Sınıf Yardımlaşması', icon: '🤝' },
+];
+
+const QuickBadgeAwardBox: React.FC<{
+  currentClass?: ClassRoom;
+  students: Student[];
+  onAwardBadge?: (badge: StudentBadge) => void;
+  onOpenBadgeManagement?: () => void;
+}> = ({ currentClass, students, onAwardBadge, onOpenBadgeManagement }) => {
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [selectedPreset, setSelectedPreset] = useState(BADGE_PRESETS[0]);
+  const [customTitle, setCustomTitle] = useState<string>('');
+  const [durationDays, setDurationDays] = useState<number>(7);
+  const [isSuccess, setIsSuccess] = useState<boolean>(false);
+
+  const handleAward = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentId) return;
+
+    const titleToUse = customTitle.trim() || selectedPreset.title;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const expiresAtStr = calculateBadgeExpiration(todayStr, durationDays);
+
+    const newBadge: StudentBadge = {
+      id: `badge-${Date.now()}`,
+      studentId: selectedStudentId,
+      classId: currentClass?.id || '',
+      badgeType: 'star_of_week',
+      title: titleToUse,
+      icon: selectedPreset.icon,
+      iconName: 'Award',
+      description: `${titleToUse} ödülü verildi.`,
+      awardedAt: todayStr,
+      durationDays: durationDays,
+      expiresAt: expiresAtStr,
+    };
+
+    if (onAwardBadge) {
+      onAwardBadge(newBadge);
+    }
+
+    setIsSuccess(true);
+    setCustomTitle('');
+    setTimeout(() => setIsSuccess(false), 3000);
+  };
+
+  if (students.length === 0) return null;
+
+  return (
+    <div className="mt-4 p-4 rounded-3xl bg-gradient-to-r from-amber-500/10 via-purple-500/5 to-indigo-500/10 border border-amber-300/80 shadow-2xs space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-amber-200/80">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-2xl bg-amber-500 text-slate-950 font-black flex items-center justify-center text-lg shadow-xs shrink-0">
+            🏆
+          </div>
+          <div>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+              Hızlı Rozet & Ödül Verme Kutusu
+              <span className="text-[10px] font-extrabold bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full uppercase shadow-2xs">
+                Anlık Ödüllendir
+              </span>
+            </h4>
+            <p className="text-[11px] text-slate-600 font-medium">
+              {currentClass ? `${currentClass.name} sınıfından` : 'Sınıftan'} bir öğrenci seçip hemen başarı rozeti tanımlayın
+            </p>
+          </div>
+        </div>
+
+        {onOpenBadgeManagement && (
+          <button
+            type="button"
+            onClick={onOpenBadgeManagement}
+            className="text-xs font-bold text-amber-800 hover:text-amber-950 underline shrink-0 flex items-center gap-1 cursor-pointer"
+          >
+            <span>Tüm Rozet Yönetimi →</span>
+          </button>
+        )}
+      </div>
+
+      <form onSubmit={handleAward} className="space-y-3">
+        {/* Presets row */}
+        <div>
+          <label className="block text-[11px] font-extrabold text-slate-700 mb-1.5">1. Rozet Türü Seçin veya Özel Unvan Yazın:</label>
+          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+            {BADGE_PRESETS.map((preset) => {
+              const isSelected = selectedPreset.title === preset.title && !customTitle;
+              return (
+                <button
+                  key={preset.title}
+                  type="button"
+                  onClick={() => {
+                    setSelectedPreset(preset);
+                    setCustomTitle('');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shrink-0 ${
+                    isSelected
+                      ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs ring-2 ring-amber-300/60'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'
+                  }`}
+                >
+                  <span className="text-sm">{preset.icon}</span>
+                  <span className="break-words">{preset.title}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <input
+            type="text"
+            placeholder="Veya özel bir rozet unvanı yazın (Örn: Matematik Dehası, Soru Avcısı)..."
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            className="w-full text-xs font-bold bg-white text-slate-800 border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-400 focus:outline-none placeholder:text-slate-400"
+          />
+        </div>
+
+        {/* Duration selector */}
+        <div>
+          <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
+            2. Geçerlilik Süresi (Varsayılan: 1 Hafta):
+          </label>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { label: '1 Hafta (7 Gün)', value: 7 },
+              { label: '2 Hafta (14 Gün)', value: 14 },
+              { label: '1 Ay (30 Gün)', value: 30 },
+              { label: 'Süresiz / Kalıcı', value: 0 },
+            ].map((dur) => (
+              <button
+                key={dur.value}
+                type="button"
+                onClick={() => setDurationDays(dur.value)}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold border transition-all cursor-pointer ${
+                  durationDays === dur.value
+                    ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-2xs ring-2 ring-amber-300/50'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'
+                }`}
+              >
+                {dur.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Student & Action row */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+          <div className="sm:col-span-7">
+            <label className="block text-[11px] font-extrabold text-slate-700 mb-1">3. Öğrenci Seçin:</label>
+            <select
+              value={selectedStudentId}
+              onChange={(e) => setSelectedStudentId(e.target.value)}
+              className="w-full text-xs font-bold bg-white text-slate-800 border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-400 focus:outline-none cursor-pointer"
+              required
+            >
+              <option value="">-- Öğrenci Seçiniz --</option>
+              {students.map((std) => (
+                <option key={std.id} value={std.id}>
+                  {std.number ? `${std.number} - ` : ''}{std.name} {std.surname}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sm:col-span-5 flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={!selectedStudentId}
+              className="flex-1 py-2 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-50 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+            >
+              <span>{selectedPreset.icon}</span>
+              <span>Rozeti Ver</span>
+            </button>
+
+            {isSuccess && (
+              <span className="text-xs font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-3 py-2 rounded-xl animate-in fade-in flex items-center gap-1 shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Verildi!
+              </span>
+            )}
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
 
 interface DashboardViewProps {
   classes: ClassRoom[];
@@ -82,6 +275,11 @@ interface DashboardViewProps {
   onDeleteLessonLog?: (logId: string) => void;
   layoutConfig?: DashboardLayoutConfig;
   onOpenCustomizeDashboard?: () => void;
+  onOpenOfficialReport?: () => void;
+  onOpenParentMeetingModal?: () => void;
+  onOpenBadgeManagement?: () => void;
+  badges?: StudentBadge[];
+  onAwardBadge?: (badge: StudentBadge) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -117,6 +315,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onDeleteLessonLog,
   layoutConfig,
   onOpenCustomizeDashboard,
+  onOpenOfficialReport,
+  onOpenParentMeetingModal,
+  onOpenBadgeManagement,
+  badges = [],
+  onAwardBadge,
 }) => {
   const currentClass = classes.find((c) => c.id === selectedClassId) || classes[0];
   const classStudents = currentClass ? students.filter((s) => s.classId === currentClass.id) : [];
@@ -126,6 +329,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const termLogs = academicYearConfig ? filterLogsByTerm(plusMinusLogs, activeTerm, academicYearConfig) : plusMinusLogs;
   const termQuizzes = academicYearConfig ? filterQuizScoresByTerm(quizzes, activeTerm, academicYearConfig) : quizzes;
   const termNotebooks = academicYearConfig ? filterNotebookControlsByTerm(notebookControls, activeTerm, academicYearConfig) : notebookControls;
+
+  // Weekly Stars calculation
+  const weeklyStarsData = useMemo(() => {
+    if (!currentClass || classStudents.length === 0) return [];
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const weeklyLogs = plusMinusLogs.filter((log) => {
+      if (log.studentId && classStudents.some((s) => s.id === log.studentId)) {
+        const logDate = new Date(log.date || log.createdAt);
+        return logDate >= sevenDaysAgo;
+      }
+      return false;
+    });
+
+    const studentMap = new Map<string, { student: Student; plusCount: number; minusCount: number; netScore: number }>();
+
+    classStudents.forEach((std) => {
+      studentMap.set(std.id, { student: std, plusCount: 0, minusCount: 0, netScore: 0 });
+    });
+
+    weeklyLogs.forEach((log) => {
+      const entry = studentMap.get(log.studentId);
+      if (entry) {
+        if (log.type === 'plus') {
+          entry.plusCount += 1;
+        } else {
+          entry.minusCount += 1;
+        }
+        entry.netScore = entry.plusCount - entry.minusCount;
+      }
+    });
+
+    return Array.from(studentMap.values())
+      .filter((e) => e.plusCount > 0)
+      .sort((a, b) => b.plusCount - a.plusCount || b.netScore - a.netScore);
+  }, [currentClass, classStudents, plusMinusLogs]);
 
   // Latest Lesson Log for current class
   const latestLessonLog = currentClass
@@ -325,6 +565,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <p className="text-xl font-black text-sky-300 mt-0.5">{highPerformers} <span className="text-xs font-normal opacity-70">öğrenci</span></p>
                 </div>
               </div>
+
+              {/* Special Features Quick Action Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/10 text-xs font-bold">
+                {onOpenParentMeetingModal && (
+                  <button
+                    onClick={onOpenParentMeetingModal}
+                    className="p-2.5 bg-white/15 hover:bg-white/25 text-white rounded-xl border border-white/20 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                  >
+                    <span>💬 AI Veli Özeti Hazırla</span>
+                  </button>
+                )}
+
+                {onOpenBadgeManagement && (
+                  <button
+                    onClick={onOpenBadgeManagement}
+                    className="p-2.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 rounded-xl border border-amber-300/30 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                  >
+                    <span>🏆 Başarı Rozetleri Modülü</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -378,6 +639,92 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 );
               })}
             </div>
+          </div>
+        );
+
+      case 'weekly_stars':
+        return (
+          <div key="weekly_stars" className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-black border border-amber-200 shadow-2xs">
+                  <Award className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                    Haftanın Yıldızları
+                    <span className="text-[10px] font-black bg-amber-400/80 text-amber-950 px-2 py-0.5 rounded-full uppercase">
+                      En Çok Artı Alanlar
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    {currentClass ? `${currentClass.name} sınıfının` : 'Sınıfın'} bu haftaki performans liderleri
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => onNavigateTab('quick-score')}
+                className="text-xs font-bold text-amber-800 hover:text-amber-950 flex items-center gap-1 cursor-pointer"
+              >
+                Canlı Artı / Eksi →
+              </button>
+            </div>
+
+            {weeklyStarsData.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-500 bg-amber-50/50 rounded-2xl border border-dashed border-amber-200 space-y-1.5">
+                <p className="font-extrabold text-amber-950">Bu Hafta Henüz Artı Verilmemiş</p>
+                <p className="text-[11px] text-amber-800/80 max-w-md mx-auto">
+                  Ders esnasında öğrencilerinize verdiğiniz artı puanlar burada haftalık sıralama olarak görünür.
+                </p>
+                <button
+                  onClick={() => onNavigateTab('quick-score')}
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-xs cursor-pointer"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>İlk Artıyı Ver</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {weeklyStarsData.slice(0, 6).map((item, idx) => {
+                  const rankEmoji = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+                  const rankBg =
+                    idx === 0
+                      ? 'bg-amber-100/90 border-amber-300 text-amber-950'
+                      : idx === 1
+                      ? 'bg-slate-100 border-slate-300 text-slate-900'
+                      : idx === 2
+                      ? 'bg-amber-50/90 border-amber-200 text-amber-900'
+                      : 'bg-slate-50 border-slate-200 text-slate-700';
+
+                  return (
+                    <div
+                      key={item.student.id}
+                      className={`p-3 rounded-2xl border flex items-center justify-between gap-3 transition-all ${rankBg}`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl font-black shrink-0 w-7 text-center">{rankEmoji}</span>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-black text-slate-900 truncate">
+                            {item.student.name} {item.student.surname}
+                          </h4>
+                          <span className="text-[10px] text-slate-500 font-semibold block">
+                            No: {item.student.number || '-'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="inline-block bg-emerald-600 text-white font-black text-xs px-2.5 py-1 rounded-xl shadow-2xs">
+                          +{item.plusCount} Artı
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
 
@@ -633,6 +980,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             </div>
           </div>
+        );
+
+      case 'quick_badge_award':
+        return (
+          <QuickBadgeAwardBox
+            key="quick_badge_award"
+            currentClass={currentClass}
+            students={classStudents}
+            onAwardBadge={onAwardBadge}
+            onOpenBadgeManagement={onOpenBadgeManagement}
+          />
         );
 
       case 'smart_warnings':

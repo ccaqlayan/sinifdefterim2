@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { ClassRoom, Student } from '../types';
+import { ClassRoom, Student, StudentBadge } from '../types';
+import { isBadgeActive } from '../utils/badgeUtils';
 import {
   Users,
   BookOpen,
@@ -47,6 +48,7 @@ interface ClassAndStudentManagementViewProps {
   onOpenBulkImport: () => void;
   onOpenPdfImport?: () => void;
   onOpenAddClassModal: () => void;
+  badges?: StudentBadge[];
 }
 
 export const ClassAndStudentManagementView: React.FC<ClassAndStudentManagementViewProps> = ({
@@ -64,6 +66,7 @@ export const ClassAndStudentManagementView: React.FC<ClassAndStudentManagementVi
   onOpenBulkImport,
   onOpenPdfImport,
   onOpenAddClassModal,
+  badges = [],
 }) => {
   // Main Tab in Management: default to 'classes' if no classes exist yet
   const [activeTab, setActiveTab] = useState<'classes' | 'students'>(
@@ -694,6 +697,25 @@ export const ClassAndStudentManagementView: React.FC<ClassAndStudentManagementVi
                             Not: {std.notes}
                           </div>
                         )}
+
+                        {(() => {
+                          const stdBadges = badges.filter((b) => b.studentId === std.id && isBadgeActive(b));
+                          if (stdBadges.length === 0) return null;
+                          return (
+                            <div className="flex items-center gap-1 mt-1 flex-wrap">
+                              {stdBadges.map((b) => (
+                                <span
+                                  key={b.id}
+                                  className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300/80 px-1.5 py-0.2 rounded font-black flex items-center gap-0.5"
+                                  title={b.title}
+                                >
+                                  <span>{b.icon || '🏆'}</span>
+                                  <span className="whitespace-nowrap">{b.title}</span>
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
